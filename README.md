@@ -1,51 +1,28 @@
 # 🏠 Funda Property Tracker
 
-A full-stack application for searching, tracking, and rating properties on Funda.nl. Built with Python (search backend) and React + TypeScript + Tailwind v4 (frontend).
-
-## 📁 Project Structure
-
-```
-funda-scraper/
-├── src/                      # React frontend source
-│   ├── components/           # React components
-│   ├── types/               # TypeScript definitions
-│   ├── App.tsx              # Main app component
-│   ├── main.tsx             # Entry point
-│   └── index.css            # Tailwind v4 styles
-├── public/                  # Static assets
-│   └── data/                # Data files (served publicly)
-│       ├── properties.json  # Property data from Funda
-│       └── ratings.json     # Your ratings
-├── scripts/                 # Python backend
-│   ├── config.json          # Search configuration
-│   ├── search.py            # Property search script
-│   └── requirements.txt     # Python dependencies
-├── .github/workflows/       # GitHub Actions
-│   └── deploy.yml           # Auto-deploy to Pages
-├── dist/                    # Build output (auto-generated)
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-└── index.html
-```
+Track and rate properties from Funda.nl. Python scraper + React frontend + Supabase backend.
 
 ## 🚀 Quick Start
 
-### 1. Initial Setup
+### 1. Setup
 
 ```bash
-# Clone the repo
-git clone <your-repo-url>
-cd funda-scraper
-
-# Install Python dependencies
-pip install git+https://github.com/0xMH/pyfunda.git
-
-# Install Node dependencies
+# Install dependencies
+pip install -r scripts/requirements.txt
 npm install
+
+# Create .env file in root
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-key
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### 2. Configure Your Search
+### 2. Setup Supabase
+
+Run the SQL schema from `scripts/supabase-schema.sql` in your Supabase SQL Editor.
+
+### 3. Configure Search
 
 Edit `scripts/config.json`:
 
@@ -53,7 +30,7 @@ Edit `scripts/config.json`:
 {
   "search": {
     "city": "breda",
-    "neighborhoods": ["ginneken", "princenhage"],
+    "neighborhoods": ["belcrum", "station"],
     "price_min": 500000,
     "price_max": 750000,
     "area_min": 130,
@@ -62,161 +39,64 @@ Edit `scripts/config.json`:
 }
 ```
 
-### 3. Run Search
+### 4. Run
 
 ```bash
-python scripts/search.py
-```
+# Search for properties
+python scripts/search_supabase.py
 
-This will:
-- Search Funda based on your criteria
-- Save/update properties in `public/data/properties.json`
-- Track new, updated, and removed properties
-- Show price change history
-
-### 4. Start Development Server
-
-```bash
+# Start frontend
 npm run dev
 ```
 
-Open http://localhost:5173 to view the app.
-
-### 5. Review Properties
-
-- Browse unreviewed properties in the Review Queue
-- Click "View on Funda" to open listings
-- Rate properties (1-5 scale) on:
-  - Location
-  - House Quality
-  - Garden
-  - Value for Money
-- Quick reject with optional reason
-- Update status (viewed, bidding, etc.)
-
-### 6. Save Your Ratings
-
-1. Click "💾 Save Ratings" button
-2. Download the `ratings.json` file
-3. Replace `public/data/ratings.json` with the downloaded file
-4. Commit and push to GitHub
-
 ## 📊 Features
 
-### Dashboard
-- Overview statistics
-- Status breakdown
-- Average ratings
-- Top rated properties
-
-### Review Queue
-- Filter by status (unreviewed, reviewed, rejected, etc.)
-- Property cards with thumbnails
-- Quick actions (review, reject, view on Funda)
-- Rating display for reviewed properties
-
-### Rating System
-- **Criteria scores** (1-5): Location, Quality, Garden, Value
-- **Status tracking**:
-  - Unreviewed → Reviewed → Viewing Interest → Viewed → Bidding
-  - Quick reject option
-  - Archive when no longer relevant
-- **Notes**: Free-form text for each property
-- **Price history**: Automatic tracking of price changes
-
-## 🔧 Development
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-### Preview Production Build
-
-```bash
-npm run preview
-```
-
-## 🌐 Deployment
-
-### GitHub Pages Setup
-
-1. Go to your repo Settings → Pages
-2. Set Source to "GitHub Actions"
-3. Push to `main` branch
-4. GitHub Actions will automatically build and deploy
-
-Your app will be available at: `https://<username>.github.io/<repo-name>/`
-
-### Future: Automated Search
-
-The repo includes a placeholder for daily automated searches at 7am:
-
-```yaml
-# .github/workflows/search.yml (to be created)
-on:
-  schedule:
-    - cron: '0 7 * * *'  # 7am UTC daily
-```
-
-This will require:
-- GitHub Actions secrets for any API keys
-- Auto-commit workflow for properties.json updates
-
-## 💾 Data Management
-
-### Properties Data
-- Automatically tracked in `public/data/properties.json`
-- Includes full property details, features, thumbnail URLs
-- Tracks `added_date`, `last_seen`, `status`
-- Price history for properties that change price
-
-### Ratings Data
-- Stored in `public/data/ratings.json`
-- Kept in localStorage during review sessions
-- Downloaded and manually committed
-- Can be upgraded to API backend later
-
-## 🔮 Future Enhancements
-
-- [ ] FastAPI backend for automatic rating sync
-- [ ] Multi-device rating sync
-- [ ] Automated daily searches via GitHub Actions
-- [ ] Property comparison feature
-- [ ] Export ratings to CSV/Excel
-- [ ] Email alerts for new properties
-- [ ] Save full property photos locally
-- [ ] Advanced filtering (map view, specific features)
+- **Search**: Automated Funda scraping with custom filters
+- **Track**: Properties stored in Supabase with price history
+- **Rate**: Score properties on location, quality, garden, value (1-5)
+- **Organize**: Filter by status (unreviewed, reviewed, viewing interest, rejected)
+- **Mobile-first**: Responsive design with hamburger menu
 
 ## 🛠️ Tech Stack
 
-**Frontend:**
-- React 18
-- TypeScript
-- Tailwind CSS v4
-- Vite
+- **Frontend**: React + TypeScript + Tailwind CSS v4 + Vite
+- **Backend**: Python + pyfunda
+- **Database**: Supabase (PostgreSQL)
+- **Deployment**: Vercel / Netlify / GitHub Pages
 
-**Backend:**
-- Python 3
-- pyfunda library
-- JSON file storage
+## 🌐 Deployment
 
-**Deployment:**
-- GitHub Pages
-- GitHub Actions
+### Vercel (Recommended)
+
+1. Import GitHub repo on vercel.com
+2. Add environment variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. Deploy!
+
+### GitHub Pages
+
+```bash
+# Update vite.config.ts
+base: '/funda-ratings/'
+
+# Deploy
+npm install --save-dev gh-pages
+npm run deploy
+```
 
 ## 📝 Workflow
 
-1. **Search** → Run `python scripts/search.py` locally
-2. **Commit** → Push updated `properties.json`
-3. **Review** → Use web app to rate properties
-4. **Save** → Download and commit `ratings.json`
-5. **Repeat** → Run searches as often as you like
+1. Run `python scripts/search_supabase.py` to scrape properties → saves to Supabase
+2. Open web app to review and rate properties → auto-saves to Supabase
+3. Access from any device - ratings sync automatically
 
-## 🤝 Contributing
+## 🔮 Future Ideas
 
-This is a personal project, but feel free to fork and adapt for your own use!
+- GitHub Actions for automated daily searches
+- Email alerts for new properties
+- Property comparison view
+- Map view with filters
 
 ## 📄 License
 
