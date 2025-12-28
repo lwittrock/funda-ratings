@@ -1,29 +1,27 @@
-import { Property, Rating } from '../types/property';
+import { Property } from '../types/property';
 import { useState } from 'react';
 
 interface PropertyCardProps {
   property: Property;
-  rating?: Rating;
   onReview: () => void;
   onQuickReject: () => void;
 }
 
-export default function PropertyCard({ property, rating, onReview, onQuickReject }: PropertyCardProps) {
+export default function PropertyCard({ property, onReview, onQuickReject }: PropertyCardProps) {
   const [imageError, setImageError] = useState(false);
 
-  const getAverageScore = (rating: Rating): number | null => {
+  const getAverageScore = (): number | null => {
     const scores = [
-      rating.location_score,
-      rating.house_quality_score,
-      rating.garden_score,
-      rating.value_score
+      property.rating_location,
+      property.rating_quality,
+      property.rating_value
     ].filter(s => s !== null) as number[];
     
     if (scores.length === 0) return null;
     return scores.reduce((a, b) => a + b, 0) / scores.length;
   };
 
-  const avgScore = rating ? getAverageScore(rating) : null;
+  const avgScore = getAverageScore();
 
   return (
     <div className="property-card">
@@ -41,20 +39,17 @@ export default function PropertyCard({ property, rating, onReview, onQuickReject
       <div className="property-content">
         <div className="property-header">
           <h3 className="property-title">{property.title}</h3>
-          <p className="property-location">
-            {property.postcode} {property.city}<br />
-            {property.neighbourhood}
-          </p>
+          <p className="property-location">{property.address}</p>
         </div>
         
         <div className="property-price">
-          € {property.price.toLocaleString('nl-NL')} k.k.
+          € {property.price?.toLocaleString('nl-NL')} k.k.
         </div>
         
         <div className="property-stats">
           <div className="property-stat">
             <span className="stat-bullet">•</span>
-            <span>{property.living_area} m² wonen</span>
+            <span>{property.area} m² wonen</span>
           </div>
           {property.plot_area && (
             <div className="property-stat">
@@ -62,10 +57,12 @@ export default function PropertyCard({ property, rating, onReview, onQuickReject
               <span>{property.plot_area} m² perceel</span>
             </div>
           )}
-          <div className="property-stat">
-            <span className="stat-bullet">•</span>
-            <span>{property.bedrooms} slaapkamers</span>
-          </div>
+          {property.bedrooms && (
+            <div className="property-stat">
+              <span className="stat-bullet">•</span>
+              <span>{property.bedrooms} slaapkamers</span>
+            </div>
+          )}
           {property.energy_label && (
             <div className="property-stat">
               <span className="stat-bullet">•</span>
@@ -82,11 +79,11 @@ export default function PropertyCard({ property, rating, onReview, onQuickReject
         )}
         
         <div className="property-actions">
-          <a href={property.funda_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+          <a href={property.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
             View on Funda
           </a>
           
-          {!rating || rating.status === 'unreviewed' ? (
+          {property.status === 'new' ? (
             <>
               <button onClick={onReview} className="btn btn-success">
                 Review

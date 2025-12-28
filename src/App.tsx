@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Property, Rating, PropertiesData, RatingsData, ReviewStatus } from './types/property';
+import { Property, PropertiesData, ReviewStatus } from './types/property';
 import PropertyCard from './components/PropertyCard';
 import RatingModal from './components/RatingModal';
 import { supabase } from './lib/supabase';
 
 function App() {
   const [properties, setProperties] = useState<PropertiesData>({});
-  const [ratings, setRatings] = useState<RatingsData>({});
   const [loading, setLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [filterStatus, setFilterStatus] = useState<ReviewStatus>('unreviewed');
+  const [filterStatus, setFilterStatus] = useState<ReviewStatus>('new');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   // Load data on mount
@@ -23,12 +22,11 @@ function App() {
     try {
       setLoading(true);
       
-      // Load properties from Supabase
+      // Load all properties from Supabase
       const { data: propertiesData, error: propertiesError } = await supabase
         .from('properties')
         .select('*')
-        .eq('status', 'active')
-        .order('last_seen', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (propertiesError) throw propertiesError;
 
@@ -39,20 +37,6 @@ function App() {
       });
       setProperties(propertiesObj);
 
-      // Load ratings from Supabase
-      const { data: ratingsData, error: ratingsError } = await supabase
-        .from('ratings')
-        .select('*');
-
-      if (ratingsError) throw ratingsError;
-
-      // Convert array to object keyed by property_id
-      const ratingsObj: RatingsData = {};
-      ratingsData?.forEach(rating => {
-        ratingsObj[rating.property_id] = rating as Rating;
-      });
-      setRatings(ratingsObj);
-
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Error loading data from Supabase. Check console for details.');
@@ -61,75 +45,57 @@ function App() {
     }
   };
 
-  const updateRating = async (rating: Rating) => {
+  const updateProperty = async (propertyId: number, updates: Partial<Property>) => {
     try {
-      // Upsert to Supabase
+      // Update in Supabase
       const { error } = await supabase
-        .from('ratings')
-        .upsert({
-          property_id: rating.property_id,
-          status: rating.status,
-          location_score: rating.location_score,
-          house_quality_score: rating.house_quality_score,
-          garden_score: rating.garden_score,
-          value_score: rating.value_score,
-          notes: rating.notes,
-          rejection_reason: rating.rejection_reason,
-          reviewed_date: rating.reviewed_date,
-          updated_date: rating.updated_date,
-        }, {
-          onConflict: 'property_id'
-        });
+        .from('properties')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', propertyId);
 
       if (error) throw error;
 
       // Update local state
-      setRatings(prev => ({ ...prev, [rating.property_id]: rating }));
+      setProperties(prev => ({
+        ...prev,
+        [propertyId]: {
+          ...prev[propertyId],
+          ...updates,
+          updated_at: new Date().toISOString()
+        }
+      }));
+      
       setSelectedProperty(null);
     } catch (error) {
-      console.error('Error saving rating:', error);
-      alert('Error saving rating. Check console for details.');
+      console.error('Error updating property:', error);
+      alert('Error saving changes. Check console for details.');
     }
   };
 
-  const quickReject = async (propertyId: string, reason: string) => {
-    const now = new Date().toISOString();
-    const rating: Rating = {
-      property_id: propertyId,
+  const quickReject = async (propertyId: number, reason: string) => {
+    await updateProperty(propertyId, {
       status: 'rejected',
-      location_score: null,
-      house_quality_score: null,
-      garden_score: null,
-      value_score: null,
-      notes: '',
-      rejection_reason: reason,
-      reviewed_date: now,
-      updated_date: now,
-    };
-    await updateRating(rating);
+      notes: reason || null
+    });
     setShowRejectModal(null);
     setRejectReason('');
   };
 
-  const getPropertyStatus = (propertyId: string): ReviewStatus => {
-    return ratings[propertyId]?.status || 'unreviewed';
-  };
-
   const getStatusCount = (status: ReviewStatus) => {
-    return Object.values(properties).filter(
-      p => p.status === 'active' && getPropertyStatus(p.id) === status
-    ).length;
+    return Object.values(properties).filter(p => p.status === status).length;
   };
 
   const filteredProperties = Object.values(properties).filter(prop => {
-    if (prop.status !== 'active') return false;
-    return getPropertyStatus(prop.id) === filterStatus;
+    return prop.status === filterStatus;
   });
 
   const statusConfig: Record<ReviewStatus, { label: string; icon: string }> = {
-    unreviewed: { label: 'Unreviewed', icon: '📋' },
+    new: { label: 'New', icon: '📋' },
     reviewed: { label: 'Reviewed', icon: '✓' },
-    viewing_interest: { label: 'Viewing Interest', icon: '⭐' },
+    interested: { label: 'Interested', icon: '⭐' },
     rejected: { label: 'Rejected', icon: '✕' }
   };
 
@@ -212,7 +178,6 @@ function App() {
               <PropertyCard
                 key={property.id}
                 property={property}
-                rating={ratings[property.id]}
                 onReview={() => setSelectedProperty(property)}
                 onQuickReject={() => setShowRejectModal(property.id)}
               />
@@ -225,8 +190,7 @@ function App() {
       {selectedProperty && (
         <RatingModal
           property={selectedProperty}
-          existingRating={ratings[selectedProperty.id]}
-          onSave={updateRating}
+          onSave={(updates) => updateProperty(selectedProperty.id, updates)}
           onClose={() => setSelectedProperty(null)}
         />
       )}

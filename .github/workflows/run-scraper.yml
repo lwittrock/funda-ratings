@@ -1,0 +1,43 @@
+name: Daily Property Search
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # Runs at 06:00 UTC (7am CET in winter, 8am CEST in summer)
+  workflow_dispatch: # Allows manual trigger button in GitHub UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Install dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+      
+      - name: Run Scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/search_supabase.py
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Property scraper failed! Check the logs above."

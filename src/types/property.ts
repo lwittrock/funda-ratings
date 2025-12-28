@@ -1,62 +1,59 @@
 export interface Property {
-  id: string;
+  id: number;
+  funda_id: string;
+  url: string;
   title: string;
+  address: string;
   city: string;
-  neighbourhood: string;
-  postcode: string;
-  province: string;
   price: number;
-  living_area: number;
-  plot_area: number | null;
-  bedrooms: number;
-  rooms: number;
-  construction_year: number | null;
+  area: number;
   energy_label: string | null;
-  object_type: string;
-  house_type: string | null;
-  features: {
-    has_garden: boolean;
-    has_balcony: boolean;
-    has_roof_terrace: boolean;
-    has_solar_panels: boolean;
-    has_heat_pump: boolean;
-    has_parking: boolean;
+  status: ReviewStatus;
+  rating_location: number | null;
+  rating_quality: number | null;
+  rating_value: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Additional fields from scraper
+  thumbnail_url?: string | null;
+  neighbourhood?: string | null;
+  postcode?: string | null;
+  province?: string | null;
+  plot_area?: number | null;
+  bedrooms?: number | null;
+  rooms?: number | null;
+  construction_year?: number | null;
+  object_type?: string | null;
+  house_type?: string | null;
+  features?: {
+    has_garden?: boolean;
+    has_balcony?: boolean;
+    has_roof_terrace?: boolean;
+    has_solar_panels?: boolean;
+    has_heat_pump?: boolean;
+    has_parking?: boolean;
   };
-  thumbnail_url: string | null;
-  funda_url: string;
-  added_date: string;
-  last_seen: string;
-  status: 'active' | 'removed';
-  removed_date?: string;
-  price_history: Array<{
-    price: number;
-    date: string;
-  }>;
 }
 
 export type ReviewStatus = 
-  | 'unreviewed'
-  | 'rejected'
+  | 'new'
   | 'reviewed'
-  | 'viewing_interest';
+  | 'interested'
+  | 'rejected';
 
-export interface Rating {
-  property_id: string;
-  status: ReviewStatus;
-  location_score: number | null;
-  house_quality_score: number | null;
-  garden_score: number | null;
-  value_score: number | null;
-  notes: string;
-  rejection_reason: string | null;
-  reviewed_date: string;
-  updated_date: string;
+export interface SearchConfig {
+  id: number;
+  city: string;
+  neighborhoods: string[];
+  price_min: number;
+  price_max: number;
+  area_min: number;
+  max_results: number;
+  active: boolean;
+  created_at: string;
 }
 
 export interface PropertiesData {
   [id: string]: Property;
-}
-
-export interface RatingsData {
-  [id: string]: Rating;
 }
