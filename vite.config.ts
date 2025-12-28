@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/funda-ratings/',
+  base: '/',
   build: {
     outDir: 'dist',
   },
