@@ -1,0 +1,10 @@
+{
+  "search": {
+    "city": "breda",
+    "neighborhoods": ["belcrum", "station"],
+    "price_min": 500000,
+    "price_max": 750000,
+    "area_min": 130,
+    "max_results": 50
+  }
+}
