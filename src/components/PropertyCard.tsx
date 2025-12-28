@@ -38,11 +38,11 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
       
       <div className="property-content">
         <div className="property-header">
-          <h3 className="property-title">{property.title}</h3>
+          <h3 className="property-title">{property.title}, {property.city}</h3>
         </div>
         
         <div className="property-price">
-          € {property.price?.toLocaleString('nl-NL')} k.k.
+          € {property.price?.toLocaleString('nl-NL')}
         </div>
         
         <div className="property-stats">
