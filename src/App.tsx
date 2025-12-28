@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Property, PropertiesData, ReviewStatus } from './types/property';
 import PropertyCard from './components/PropertyCard';
 import RatingModal from './components/RatingModal';
+import Settings from './components/Settings';
 import { supabase } from './lib/supabase';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -121,11 +123,21 @@ function App() {
       <header className="header">
         <div className="header-content">
           <h1 className="logo">🏠 Funda Tracker</h1>
-          <button className="menu-button" onClick={() => setMenuOpen(true)}>
-            <span>{statusConfig[filterStatus].icon}</span>
-            <span>{statusConfig[filterStatus].label}</span>
-            <span>☰</span>
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button 
+              className="btn-icon" 
+              onClick={() => setShowSettings(true)}
+              title="Settings"
+              style={{ fontSize: '1.25rem' }}
+            >
+              ⚙️
+            </button>
+            <button className="menu-button" onClick={() => setMenuOpen(true)}>
+              <span>{statusConfig[filterStatus].icon}</span>
+              <span>{statusConfig[filterStatus].label}</span>
+              <span>☰</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -229,6 +241,11 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <Settings onClose={() => setShowSettings(false)} />
       )}
     </div>
   );
