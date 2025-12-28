@@ -79,7 +79,7 @@ function App() {
 
   const quickReject = async (propertyId: number, reason: string) => {
     await updateProperty(propertyId, {
-      status: 'rejected',
+      review_status: 'rejected',
       notes: reason || null
     });
     setShowRejectModal(null);
@@ -87,11 +87,11 @@ function App() {
   };
 
   const getStatusCount = (status: ReviewStatus) => {
-    return Object.values(properties).filter(p => p.status === status).length;
+    return Object.values(properties).filter(p => p.review_status === status).length;
   };
 
   const filteredProperties = Object.values(properties).filter(prop => {
-    return prop.status === filterStatus;
+    return prop.review_status === filterStatus;
   });
 
   const statusConfig: Record<ReviewStatus, { label: string; icon: string }> = {

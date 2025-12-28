@@ -77,7 +77,8 @@ def extract_int(value):
 
 
 def extract_property_data(listing):
-    """Extract relevant data from Funda listing"""
+    """Extract ALL data from Funda listing and map to database schema"""
+    
     # Get photo URLs
     photo_urls = listing.get('photo_urls', [])
     if not photo_urls:
@@ -88,59 +89,93 @@ def extract_property_data(listing):
     thumbnail_url = photo_urls[0] if photo_urls else None
     
     # Get URL
-    funda_url = listing.get('url') or listing.get('share_url') or listing.get('funda_url')
+    funda_url = listing.get('url') or listing.get('share_url')
     
     # Construct URL if not found
     if not funda_url:
-        object_type = listing.get('object_type', 'huis').lower()
-        if object_type == 'house':
-            object_type = 'huis'
-        elif object_type == 'apartment':
-            object_type = 'appartement'
+        object_type_slug = listing.get('object_type', 'huis').lower()
+        if object_type_slug == 'house':
+            object_type_slug = 'huis'
+        elif object_type_slug == 'apartment':
+            object_type_slug = 'appartement'
         
         city = listing.get('city', '').lower()
         title_slug = listing.get('title', '').lower().replace(' ', '-')
         property_id = listing.get('global_id') or listing.get('tiny_id')
         
-        funda_url = f"https://www.funda.nl/detail/koop/{city}/{object_type}-{title_slug}/{property_id}/"
+        funda_url = f"https://www.funda.nl/detail/koop/{city}/{object_type_slug}-{title_slug}/{property_id}/"
     
-    # Get the ID
-    funda_id = str(listing.get('global_id') or listing.get('tiny_id'))
-    
-    # Build address
-    title = listing.get('title', '')
-    postcode = listing.get('postcode', '')
-    city = listing.get('city', '')
-    address = f"{title}, {postcode} {city}".strip(', ')
-    
+    # Extract all fields matching the database schema
     return {
-        'funda_id': funda_id,
-        'url': funda_url,
-        'title': title,
-        'address': address,
-        'city': city,
-        'price': extract_int(listing.get('price')),
-        'area': extract_int(listing.get('living_area')),
-        'energy_label': listing.get('energy_label'),
-        'status': 'new',  # Default status for new properties
-        'thumbnail_url': thumbnail_url,
-        'neighbourhood': listing.get('neighbourhood'),
-        'postcode': postcode,
+        # Identifiers
+        'funda_id': str(listing.get('global_id') or listing.get('tiny_id')),
+        'tiny_id': str(listing.get('tiny_id')) if listing.get('tiny_id') else None,
+        
+        # Address
+        'title': listing.get('title'),
+        'city': listing.get('city'),
+        'postcode': listing.get('postcode'),
         'province': listing.get('province'),
+        'neighbourhood': listing.get('neighbourhood'),
+        'municipality': listing.get('municipality'),
+        'house_number': listing.get('house_number'),
+        'house_number_ext': listing.get('house_number_ext'),
+        
+        # Price
+        'price': extract_int(listing.get('price')),
+        'price_formatted': listing.get('price_formatted'),
+        
+        # Property details
+        'offering_type': listing.get('offering_type'),
+        'object_type': listing.get('object_type'),
+        'construction_type': listing.get('construction_type'),
+        'house_type': listing.get('house_type'),
+        'funda_status': listing.get('status'),  # Funda's status (available/sold)
+        
+        # Measurements
+        'living_area': extract_int(listing.get('living_area')),
         'plot_area': extract_int(listing.get('plot_area')),
         'bedrooms': extract_int(listing.get('bedrooms')),
         'rooms': extract_int(listing.get('rooms')),
         'construction_year': extract_int(listing.get('construction_year')),
-        'object_type': listing.get('object_type'),
-        'house_type': listing.get('house_type'),
-        'features': {
-            'has_garden': listing.get('has_garden', False),
-            'has_balcony': listing.get('has_balcony', False),
-            'has_roof_terrace': listing.get('has_roof_terrace', False),
-            'has_solar_panels': listing.get('has_solar_panels', False),
-            'has_heat_pump': listing.get('has_heat_pump', False),
-            'has_parking': listing.get('has_parking_on_site', False),
-        },
+        
+        # Energy & Features
+        'energy_label': listing.get('energy_label'),
+        'has_garden': listing.get('has_garden', False),
+        'has_balcony': listing.get('has_balcony', False),
+        'has_solar_panels': listing.get('has_solar_panels', False),
+        'has_heat_pump': listing.get('has_heat_pump', False),
+        'has_roof_terrace': listing.get('has_roof_terrace', False),
+        'has_parking_on_site': listing.get('has_parking_on_site', False),
+        'has_parking_enclosed': listing.get('has_parking_enclosed', False),
+        'is_energy_efficient': listing.get('is_energy_efficient', False),
+        'is_monument': listing.get('is_monument', False),
+        'is_fixer_upper': listing.get('is_fixer_upper', False),
+        
+        # Listing details
+        'description': listing.get('description'),
+        'highlight': listing.get('highlight'),
+        'publication_date': listing.get('publication_date'),
+        'open_house': listing.get('open_house', False),
+        'is_auction': listing.get('is_auction', False),
+        
+        # URLs
+        'url': funda_url,
+        'share_url': listing.get('share_url'),
+        'google_maps_url': listing.get('google_maps_url'),
+        'brochure_url': listing.get('brochure_url'),
+        'thumbnail_url': thumbnail_url,
+        
+        # Media (as JSON)
+        'photos': photo_urls,
+        'features_data': {},  # Can store additional data here if needed
+        
+        # Review fields (default for new properties)
+        'review_status': 'new',
+        'rating_location': None,
+        'rating_quality': None,
+        'rating_value': None,
+        'notes': None,
     }
 
 
@@ -264,9 +299,9 @@ def search_properties():
                     print(f"      URL: {property_data['url']}")
                 
                 if funda_id in existing_properties:
-                    # Update existing - preserve user ratings and status
+                    # Update existing - preserve user review data
                     old_data = existing_properties[funda_id]
-                    property_data['status'] = old_data.get('status', 'new')
+                    property_data['review_status'] = old_data.get('review_status', 'new')
                     property_data['rating_location'] = old_data.get('rating_location')
                     property_data['rating_quality'] = old_data.get('rating_quality')
                     property_data['rating_value'] = old_data.get('rating_value')

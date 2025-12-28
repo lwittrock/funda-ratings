@@ -39,7 +39,6 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
       <div className="property-content">
         <div className="property-header">
           <h3 className="property-title">{property.title}</h3>
-          <p className="property-location">{property.address}</p>
         </div>
         
         <div className="property-price">
@@ -49,7 +48,7 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
         <div className="property-stats">
           <div className="property-stat">
             <span className="stat-bullet">•</span>
-            <span>{property.area} m² wonen</span>
+            <span>{property.living_area} m² wonen</span>
           </div>
           {property.plot_area && (
             <div className="property-stat">
@@ -83,7 +82,7 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
             View on Funda
           </a>
           
-          {property.status === 'new' ? (
+          {property.review_status === 'new' ? (
             <>
               <button onClick={onReview} className="btn btn-success">
                 Review

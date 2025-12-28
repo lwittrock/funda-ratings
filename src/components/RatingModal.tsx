@@ -11,12 +11,12 @@ export default function RatingModal({ property, onSave, onClose }: RatingModalPr
   const [locationScore, setLocationScore] = useState(property.rating_location || 0);
   const [qualityScore, setQualityScore] = useState(property.rating_quality || 0);
   const [valueScore, setValueScore] = useState(property.rating_value || 0);
-  const [status, setStatus] = useState<ReviewStatus>(property.status);
+  const [status, setStatus] = useState<ReviewStatus>(property.review_status);
   const [notes, setNotes] = useState(property.notes || '');
 
   const handleSave = () => {
     onSave({
-      status,
+      review_status: status,
       rating_location: locationScore || null,
       rating_quality: qualityScore || null,
       rating_value: valueScore || null,
@@ -31,7 +31,6 @@ export default function RatingModal({ property, onSave, onClose }: RatingModalPr
           <div className="modal-title-row">
             <div>
               <h3 className="modal-title">{property.title}</h3>
-              <p className="modal-subtitle">{property.address}</p>
               <p className="modal-subtitle" style={{ fontWeight: 600, marginTop: '0.5rem' }}>
                 € {property.price?.toLocaleString('nl-NL')} k.k.
               </p>
