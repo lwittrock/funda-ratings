@@ -10,8 +10,12 @@ interface RatingModalProps {
 export default function RatingModal({ property, onSave, onClose }: RatingModalProps) {
   const [locationScore, setLocationScore] = useState(property.rating_location || 0);
   const [qualityScore, setQualityScore] = useState(property.rating_quality || 0);
+  const [outsideScore, setOutsideScore] = useState(property.rating_outside || 0);
   const [valueScore, setValueScore] = useState(property.rating_value || 0);
-  const [status, setStatus] = useState<ReviewStatus>(property.review_status);
+  // FIX: Default to 'reviewed' if property is 'new'
+  const [status, setStatus] = useState<ReviewStatus>(
+    property.review_status === 'new' ? 'reviewed' : property.review_status
+  );
   const [notes, setNotes] = useState(property.notes || '');
 
   const handleSave = () => {
@@ -19,6 +23,7 @@ export default function RatingModal({ property, onSave, onClose }: RatingModalPr
       review_status: status,
       rating_location: locationScore || null,
       rating_quality: qualityScore || null,
+      rating_outside: outsideScore || null,
       rating_value: valueScore || null,
       notes: notes || null,
     });
@@ -90,6 +95,29 @@ export default function RatingModal({ property, onSave, onClose }: RatingModalPr
                   max="5"
                   value={qualityScore}
                   onChange={(e) => setQualityScore(Number(e.target.value))}
+                  className="slider"
+                />
+                <div className="slider-ticks">
+                  <span>0</span>
+                  <span>1</span>
+                  <span>2</span>
+                  <span>3</span>
+                  <span>4</span>
+                  <span>5</span>
+                </div>
+              </div>
+              
+              <div className="slider-group">
+                <div className="slider-header">
+                  <label className="form-label" style={{ margin: 0 }}>Outside</label>
+                  <span className="slider-value">{outsideScore ? `${outsideScore}/5` : '—'}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  value={outsideScore}
+                  onChange={(e) => setOutsideScore(Number(e.target.value))}
                   className="slider"
                 />
                 <div className="slider-ticks">

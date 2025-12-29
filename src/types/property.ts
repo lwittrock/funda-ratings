@@ -8,6 +8,7 @@ export interface Property {
   review_status: ReviewStatus;
   rating_location: number | null;
   rating_quality: number | null;
+  rating_outside: number | null;
   rating_value: number | null;
   notes: string | null;
   
@@ -73,6 +74,12 @@ export interface Property {
   // Media (stored as JSON)
   photos: string[];
   features_data: Record<string, any>;
+  
+  // Distance to train station (calculated via Google Maps)
+  nearest_station_name: string | null;
+  distance_station_walk: number | string | null; // minutes or 'N/A'
+  distance_station_bike: number | string | null; // minutes or 'N/A'
+  distance_station_transit: number | string | null; // minutes or 'N/A'
 }
 
 export type ReviewStatus = 

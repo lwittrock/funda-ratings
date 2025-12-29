@@ -35,6 +35,7 @@ CREATE TABLE properties (
   review_status text default 'new' check (review_status in ('new', 'reviewed', 'interested', 'rejected')),
   rating_location int check (rating_location >= 0 and rating_location <= 5),
   rating_quality int check (rating_quality >= 0 and rating_quality <= 5),
+  rating_outside int check (rating_outside >= 0 and rating_outside <= 5),
   rating_value int check (rating_value >= 0 and rating_value <= 5),
   notes text,
   
@@ -99,7 +100,13 @@ CREATE TABLE properties (
   
   -- Media (stored as JSONB for flexibility)
   photos jsonb default '[]', -- array of photo URLs
-  features_data jsonb default '{}' -- any additional features as JSON
+  features_data jsonb default '{}', -- any additional features as JSON
+  
+  -- Distance to train station (calculated via Google Maps)
+  nearest_station_name text,
+  distance_station_walk int, -- minutes (or stored as text 'N/A' if not available)
+  distance_station_bike int, -- minutes (or stored as text 'N/A' if not available)
+  distance_station_transit int -- minutes (or stored as text 'N/A' if not available)
 );
 
 -- ============================================================================
@@ -109,6 +116,7 @@ CREATE INDEX idx_properties_review_status ON properties(review_status);
 CREATE INDEX idx_properties_city ON properties(city);
 CREATE INDEX idx_properties_price ON properties(price);
 CREATE INDEX idx_properties_created_at ON properties(created_at DESC);
+CREATE INDEX idx_properties_station ON properties(nearest_station_name);
 CREATE INDEX idx_search_configs_active ON search_configs(active);
 
 -- ============================================================================
@@ -146,3 +154,14 @@ CREATE POLICY "Allow authenticated full access to search_configs"
 
 CREATE POLICY "Allow authenticated full access to properties" 
   ON properties FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ============================================================================
+-- 6. DISTANCE TO TRAIN STATION FIELDS
+-- ============================================================================
+ALTER TABLE properties
+  ADD COLUMN nearest_station_name text,
+  ADD COLUMN distance_station_walk int, -- minutes
+  ADD COLUMN distance_station_bike int, -- minutes
+  ADD COLUMN distance_station_transit int; -- minutes (by bus)
+
+CREATE INDEX idx_properties_station ON properties(nearest_station_name);

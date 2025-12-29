@@ -14,6 +14,7 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
     const scores = [
       property.rating_location,
       property.rating_quality,
+      property.rating_outside,
       property.rating_value
     ].filter(s => s !== null) as number[];
     
@@ -21,6 +22,45 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
     return scores.reduce((a, b) => a + b, 0) / scores.length;
   };
 
+  const formatDistance = (value: number | string | null): string => {
+    if (value === null || value === undefined) return '—';
+    if (value === 'N/A') return 'N/A';
+    return `${value}`;
+  };
+
+  // Build location line
+  const buildLocationLine = (): string => {
+    const parts = [];
+    if (property.distance_station_walk || property.distance_station_bike || property.distance_station_transit) {
+      parts.push(`🚶 ${formatDistance(property.distance_station_walk)}min`);
+      parts.push(`🚴 ${formatDistance(property.distance_station_bike)}min`);
+      parts.push(`🚌 ${formatDistance(property.distance_station_transit)}min`);
+    }
+    return parts.join(' · ');
+  };
+
+  // Build house line
+  const buildHouseLine = (): string => {
+    const parts = [];
+    parts.push(`${property.living_area} m² wonen`);
+    if (property.bedrooms) parts.push(`${property.bedrooms} slaapkamers`);
+    if (property.energy_label) parts.push(`Energielabel ${property.energy_label}`);
+    if (property.construction_year) parts.push(`Bouwjaar ${property.construction_year}`);
+    return parts.join(', ');
+  };
+
+  // Build outside line
+  const buildOutsideLine = (): string => {
+    const parts = [];
+    if (property.plot_area) parts.push(`${property.plot_area} m² perceel`);
+    if (property.has_garden) parts.push('Tuin');
+    if (property.has_parking_on_site) parts.push('Parkeren');
+    return parts.join(', ');
+  };
+
+  const locationLine = buildLocationLine();
+  const houseLine = buildHouseLine();
+  const outsideLine = buildOutsideLine();
   const avgScore = getAverageScore();
 
   return (
@@ -46,26 +86,25 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
         </div>
         
         <div className="property-stats">
+          {/* Locatie */}
+          {locationLine && (
+            <div className="property-stat">
+              <span className="stat-bullet">•</span>
+              <span><strong>Locatie:</strong> {locationLine}</span>
+            </div>
+          )}
+          
+          {/* Huis */}
           <div className="property-stat">
             <span className="stat-bullet">•</span>
-            <span>{property.living_area} m² wonen</span>
+            <span><strong>Huis:</strong> {houseLine}</span>
           </div>
-          {property.plot_area && (
+          
+          {/* Outside */}
+          {outsideLine && (
             <div className="property-stat">
               <span className="stat-bullet">•</span>
-              <span>{property.plot_area} m² perceel</span>
-            </div>
-          )}
-          {property.bedrooms && (
-            <div className="property-stat">
-              <span className="stat-bullet">•</span>
-              <span>{property.bedrooms} slaapkamers</span>
-            </div>
-          )}
-          {property.energy_label && (
-            <div className="property-stat">
-              <span className="stat-bullet">•</span>
-              <span>Energielabel {property.energy_label}</span>
+              <span><strong>Outside:</strong> {outsideLine}</span>
             </div>
           )}
         </div>
