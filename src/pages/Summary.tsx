@@ -291,7 +291,7 @@ export default function Summary() {
                     borderRadius: '0.5rem'
                   }}
                   labelFormatter={(date: string) => new Date(date).toLocaleDateString()}
-                  formatter={(value: number) => [`${value} properties`, 'Added']}
+                  formatter={(value: number | undefined) => [`${value || 0} properties`, 'Added']}
                 />
                 <Bar 
                   dataKey="count" 

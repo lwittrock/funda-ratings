@@ -5,7 +5,7 @@ import { MapPin, Euro, Ruler, Play, Pause, Edit, Trash2 } from 'lucide-react';
 
 export default function Settings() {
   const [configs, setConfigs] = useState<SearchConfig[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<SearchConfig>>({
     city: '',
