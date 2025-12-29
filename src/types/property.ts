@@ -63,6 +63,10 @@ export interface Property {
   publication_date: string | null;
   open_house: boolean;
   is_auction: boolean;
+
+  // Location (from pyfunda)
+  latitude?: number | null;
+  longitude?: number | null;
   
   // URLs (from pyfunda)
   url: string;

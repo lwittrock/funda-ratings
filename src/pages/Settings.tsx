@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SearchConfig } from '../types/property';
 import { supabase } from '../lib/supabase';
+import { MapPin, Euro, Ruler, Play, Pause, Edit, Trash2 } from 'lucide-react';
 
 export default function Settings() {
   const [configs, setConfigs] = useState<SearchConfig[]>([]);
@@ -149,16 +150,6 @@ export default function Settings() {
       .filter(n => n.length > 0);
   };
 
-  if (loading) {
-    return (
-      <div className="main-content">
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-          Loading settings...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="main-content">
       <div className="section-header">
@@ -167,23 +158,23 @@ export default function Settings() {
       </div>
 
       {/* Form */}
-      <div className="settings-form">
-        <h4 style={{ marginBottom: '1rem', fontWeight: 600 }}>
+      <div className="settings-form-compact">
+        <h4 className="settings-form-title">
           {editingId ? 'Edit Configuration' : 'New Configuration'}
         </h4>
 
-        <div className="form-group">
+        <div className="form-group-compact">
           <label className="form-label">City *</label>
           <input
             type="text"
             value={formData.city}
             onChange={(e) => setFormData({ ...formData, city: e.target.value.toLowerCase() })}
             className="form-input"
-            placeholder="e.g. amsterdam, utrecht, ..."
+            placeholder="e.g. amsterdam, utrecht"
           />
         </div>
 
-        <div className="form-group">
+        <div className="form-group-compact">
           <label className="form-label">Neighborhoods (comma-separated)</label>
           <input
             type="text"
@@ -193,15 +184,12 @@ export default function Settings() {
               setFormData({ ...formData, neighborhoods: parseNeighborhoods(e.target.value) });
             }}
             className="form-input"
-            placeholder="e.g. station, centrum, ..."
+            placeholder="e.g. station, centrum"
           />
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Leave empty to search all neighborhoods
-          </p>
         </div>
 
         <div className="form-row">
-          <div className="form-group">
+          <div className="form-group-compact">
             <label className="form-label">Min Price (€)</label>
             <input
               type="number"
@@ -212,7 +200,7 @@ export default function Settings() {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group-compact">
             <label className="form-label">Max Price (€)</label>
             <input
               type="number"
@@ -225,7 +213,7 @@ export default function Settings() {
         </div>
 
         <div className="form-row">
-          <div className="form-group">
+          <div className="form-group-compact">
             <label className="form-label">Min Area (m²)</label>
             <input
               type="number"
@@ -235,7 +223,7 @@ export default function Settings() {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group-compact">
             <label className="form-label">Max Results</label>
             <input
               type="number"
@@ -248,19 +236,19 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="form-group">
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+        <div className="form-group-compact">
+          <label className="checkbox-label">
             <input
               type="checkbox"
               checked={formData.active}
               onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-              style={{ width: '1.25rem', height: '1.25rem' }}
+              className="checkbox-input"
             />
-            <span className="form-label" style={{ margin: 0 }}>Active (include in daily searches)</span>
+            <span>Active (include in daily searches)</span>
           </label>
         </div>
 
-        <div className="modal-actions">
+        <div className="form-actions">
           <button onClick={handleSave} className="btn btn-success">
             {editingId ? 'Update' : 'Create'}
           </button>
@@ -273,13 +261,13 @@ export default function Settings() {
       </div>
 
       {/* List of existing configs */}
-      <div style={{ marginTop: '2rem' }}>
-        <h4 style={{ marginBottom: '1rem', fontWeight: 600 }}>
+      <div className="configs-section">
+        <h4 className="configs-title">
           Saved Configurations ({configs.length})
         </h4>
 
         {configs.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>
+          <p className="configs-empty">
             No configurations yet. Create one above!
           </p>
         ) : (
@@ -287,20 +275,29 @@ export default function Settings() {
             {configs.map(config => (
               <div key={config.id} className={`config-item ${!config.active ? 'inactive' : ''}`}>
                 <div className="config-info">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <h5 style={{ margin: 0, fontWeight: 600 }}>
+                  <div className="config-header">
+                    <h5 className="config-name">
                       {config.city.charAt(0).toUpperCase() + config.city.slice(1)}
                     </h5>
                     <span className={`status-badge ${config.active ? 'active' : 'inactive'}`}>
                       {config.active ? '● Active' : '○ Inactive'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  <div className="config-details">
                     {config.neighborhoods.length > 0 && (
-                      <div>📍 {config.neighborhoods.join(', ')}</div>
+                      <div className="config-detail">
+                        <MapPin size={14} />
+                        <span>{config.neighborhoods.join(', ')}</span>
+                      </div>
                     )}
-                    <div>💰 €{config.price_min.toLocaleString()} - €{config.price_max.toLocaleString()}</div>
-                    <div>📐 {config.area_min}m² min · {config.max_results} results max</div>
+                    <div className="config-detail">
+                      <Euro size={14} />
+                      <span>€{config.price_min.toLocaleString()} - €{config.price_max.toLocaleString()}</span>
+                    </div>
+                    <div className="config-detail">
+                      <Ruler size={14} />
+                      <span>{config.area_min}m² min · {config.max_results} results max</span>
+                    </div>
                   </div>
                 </div>
                 <div className="config-actions">
@@ -309,21 +306,21 @@ export default function Settings() {
                     className="btn-icon"
                     title={config.active ? 'Deactivate' : 'Activate'}
                   >
-                    {config.active ? '⏸' : '▶️'}
+                    {config.active ? <Pause size={18} /> : <Play size={18} />}
                   </button>
                   <button
                     onClick={() => handleEdit(config)}
                     className="btn-icon"
                     title="Edit"
                   >
-                    ✏️
+                    <Edit size={18} />
                   </button>
                   <button
                     onClick={() => handleDelete(config.id)}
                     className="btn-icon danger"
                     title="Delete"
                   >
-                    🗑️
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>

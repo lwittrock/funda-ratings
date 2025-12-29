@@ -27,51 +27,51 @@ function Navigation() {
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
-  const linkClass = (path: string) => {
-    const isActive = pathname === path;
-    if (mobileMenuOpen) {
-      return `block py-3 px-4 rounded transition-colors ${
-        isActive ? 'text-blue-400 font-semibold bg-gray-700/50' : 'text-white hover:bg-gray-700/30'
-      }`;
-    }
-    return `transition duration-300 ${
-      isActive ? 'text-blue-400 font-semibold' : 'text-white hover:text-blue-400'
-    }`;
-  };
+  const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="bg-gray-800 p-4 shadow-md">
-      <div className="max-w-7xl mx-auto">
+    <nav className="nav-bar">
+      <div className="nav-container">
         {/* Mobile Header */}
-        <div className="flex justify-between items-center lg:hidden">
-          <span className="text-white font-bold text-lg">🏠 Funda Tracker</span>
+        <div className="nav-mobile">
+          <span className="nav-logo">🏠 Funda Tracker</span>
           <button
             onClick={toggleMobileMenu}
-            className="text-white p-2 hover:bg-gray-700 rounded"
+            className="nav-hamburger"
             aria-label="Toggle menu"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
             <AnimatedMenuIcon isOpen={mobileMenuOpen} />
           </button>
         </div>
 
-        {/* Desktop Links */}
-        <ul className="hidden lg:flex justify-center space-x-24">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <Link to={item.path} className={linkClass(item.path)}>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <ul className="lg:hidden mt-4 space-y-1 pt-4 border-t border-gray-700">
+        {/* Desktop Layout */}
+        <div className="nav-desktop">
+          <span className="nav-logo">🏠 Funda Tracker</span>
+          <ul className="nav-links">
             {navItems.map((item) => (
               <li key={item.path}>
-                <Link to={item.path} onClick={() => setMobileMenuOpen(false)} className={linkClass(item.path)}>
+                <Link 
+                  to={item.path} 
+                  className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div style={{ width: '180px' }} />
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <ul className="nav-mobile-menu">
+            {navItems.map((item) => (
+              <li key={item.path}>
+                <Link 
+                  to={item.path} 
+                  onClick={() => setMobileMenuOpen(false)} 
+                  className={`nav-mobile-link ${isActive(item.path) ? 'active' : ''}`}
+                >
                   {item.label}
                 </Link>
               </li>

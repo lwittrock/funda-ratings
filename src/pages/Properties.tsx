@@ -4,11 +4,11 @@ import PropertyCard from '../components/PropertyCard';
 import RatingModal from '../components/RatingModal';
 import { supabase } from '../lib/supabase';
 
-const statusConfig: Record<ReviewStatus, { label: string; icon: string }> = {
-  new: { label: 'New', icon: '📋' },
-  reviewed: { label: 'Reviewed', icon: '✓' },
-  interested: { label: 'Interested', icon: '⭐' },
-  rejected: { label: 'Rejected', icon: '✕' }
+const statusConfig: Record<ReviewStatus, { label: string }> = {
+  new: { label: 'New' },
+  reviewed: { label: 'Reviewed' },
+  interested: { label: 'Interested' },
+  rejected: { label: 'Rejected' }
 };
 
 export default function Properties() {
@@ -118,9 +118,8 @@ export default function Properties() {
             onClick={() => setFilterStatus(status)}
             className={`filter-button ${filterStatus === status ? 'active' : ''}`}
           >
-            <span className="filter-icon">{statusConfig[status].icon}</span>
             <span className="filter-label">{statusConfig[status].label}</span>
-            <span className="filter-count">{getStatusCount(status)}</span>
+            <span className="filter-count">({getStatusCount(status)})</span>
           </button>
         ))}
       </div>
@@ -128,7 +127,7 @@ export default function Properties() {
       {/* Section Header */}
       <div className="section-header">
         <h2 className="section-title">
-          {statusConfig[filterStatus].icon} {statusConfig[filterStatus].label}
+          {statusConfig[filterStatus].label}
         </h2>
         <p className="section-subtitle">
           {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}

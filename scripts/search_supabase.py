@@ -2,7 +2,7 @@
 """
 Funda Search Script with Supabase Integration
 Reads search config from Supabase and saves results back
-Now includes distance calculation to train stations
+Now includes distance calculation to train stations AND coordinates
 """
 
 import json
@@ -38,6 +38,10 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 STATION_MAP = {
     'breda': 'Breda Station, Netherlands',
     'etten-leur': 'Etten-Leur Station, Netherlands',
+    'delft': 'Delft Station, Netherlands',
+    'tilburg': 'Tilburg Station, Netherlands',
+    'rijen': 'Station Gilzen-Rijen, Netherlands',
+    'teteringen': 'Breda Station, Netherlands',
 }
 
 
@@ -87,6 +91,26 @@ def extract_int(value):
         match = re.search(r'\d+', value)
         return int(match.group()) if match else None
     return None
+
+
+def extract_coordinates(listing):
+    """Extract latitude and longitude from listing"""
+    # Try to get coordinates tuple
+    coords = listing.get('coordinates')
+    if coords and isinstance(coords, (list, tuple)) and len(coords) == 2:
+        return float(coords[0]), float(coords[1])
+    
+    # Try individual fields
+    lat = listing.get('latitude')
+    lng = listing.get('longitude')
+    
+    if lat is not None and lng is not None:
+        try:
+            return float(lat), float(lng)
+        except (ValueError, TypeError):
+            pass
+    
+    return None, None
 
 
 def get_station_for_city(city):
@@ -251,6 +275,9 @@ def extract_property_data(listing):
         
         funda_url = f"https://www.funda.nl/detail/koop/{city}/{object_type_slug}-{title_slug}/{property_id}/"
     
+    # Extract coordinates
+    latitude, longitude = extract_coordinates(listing)
+    
     # Extract all fields matching the database schema
     return {
         # Identifiers
@@ -266,6 +293,10 @@ def extract_property_data(listing):
         'municipality': listing.get('municipality'),
         'house_number': listing.get('house_number'),
         'house_number_ext': listing.get('house_number_ext'),
+        
+        # Coordinates
+        'latitude': latitude,
+        'longitude': longitude,
         
         # Price
         'price': extract_int(listing.get('price')),
@@ -450,6 +481,8 @@ def search_properties():
                     print(f"\n   ✅ Sample property:")
                     print(f"      Title: {property_data['title']}")
                     print(f"      URL: {property_data['url']}")
+                    if property_data['latitude'] and property_data['longitude']:
+                        print(f"      Coordinates: {property_data['latitude']}, {property_data['longitude']}")
                 
                 if funda_id in existing_properties:
                     # Update existing - preserve user review data
@@ -506,6 +539,6 @@ if __name__ == "__main__":
     try:
         search_properties()
     except Exception as e:
-        print(f"\nâŒ Error: {e}")
+        print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
