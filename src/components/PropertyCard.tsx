@@ -42,20 +42,20 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
   // Build house line
   const buildHouseLine = (): string => {
     const parts = [];
-    parts.push(`${property.living_area} m² wonen`);
-    if (property.bedrooms) parts.push(`${property.bedrooms} slaapkamers`);
-    if (property.energy_label) parts.push(`Energielabel ${property.energy_label}`);
-    if (property.construction_year) parts.push(`Bouwjaar ${property.construction_year}`);
-    return parts.join(', ');
+    parts.push(`${property.living_area} m²`);
+    if (property.bedrooms) parts.push(`${property.bedrooms} bedrooms`);
+    if (property.energy_label) parts.push(`energy: ${property.energy_label}`);
+    if (property.construction_year) parts.push(`year ${property.construction_year}`);
+    return parts.join(' · ');
   };
 
   // Build outside line
   const buildOutsideLine = (): string => {
     const parts = [];
-    if (property.plot_area) parts.push(`${property.plot_area} m² perceel`);
-    if (property.has_garden) parts.push('Tuin');
-    if (property.has_parking_on_site) parts.push('Parkeren');
-    return parts.join(', ');
+    if (property.plot_area) parts.push(`${property.plot_area} m² plot`);
+    if (property.has_garden) parts.push('garden');
+    if (property.has_parking_on_site) parts.push('garage');
+    return parts.join(' · ');
   };
 
   const locationLine = buildLocationLine();
@@ -86,18 +86,18 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
         </div>
         
         <div className="property-stats">
-          {/* Locatie */}
+          {/* Location */}
           {locationLine && (
             <div className="property-stat">
               <span className="stat-bullet">•</span>
-              <span><strong>Locatie:</strong> {locationLine}</span>
+              <span><strong>Location:</strong> {locationLine}</span>
             </div>
           )}
           
-          {/* Huis */}
+          {/* House */}
           <div className="property-stat">
             <span className="stat-bullet">•</span>
-            <span><strong>Huis:</strong> {houseLine}</span>
+            <span><strong>House:</strong> {houseLine}</span>
           </div>
           
           {/* Outside */}
