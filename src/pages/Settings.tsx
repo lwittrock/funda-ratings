@@ -165,7 +165,7 @@ export default function Settings() {
   return (
     <div className="main-content">
       <div className="section-header">
-        <h2 className="section-title">⚙️ Search Settings</h2>
+        <h2 className="section-title">Search Settings</h2>
         <p className="section-subtitle">Manage your Funda search configurations</p>
       </div>
 

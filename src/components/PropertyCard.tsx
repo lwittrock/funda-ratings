@@ -58,13 +58,27 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
     return parts.join(' · ');
   };
 
+  // Get score color
+  const getScoreColor = (score: number): string => {
+  if (score >= 4) return 'var(--color-success)'; // Green - #16a34a
+  if (score >= 3) return '#f59e0b'; // Amber/yellow
+  if (score >= 2) return 'var(--color-warning)'; // Orange - #ea580c
+  return 'var(--color-danger)'; // Red - #dc2626
+  };
+
   const locationLine = buildLocationLine();
   const houseLine = buildHouseLine();
   const outsideLine = buildOutsideLine();
   const avgScore = getAverageScore();
 
   return (
-    <div className="property-card">
+    <a 
+      href={property.url} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="property-card"
+      style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+    >
       {property.thumbnail_url && !imageError ? (
         <img 
           src={property.thumbnail_url} 
@@ -109,34 +123,59 @@ export default function PropertyCard({ property, onReview, onQuickReject }: Prop
           )}
         </div>
         
-        {avgScore !== null && (
-          <div className="rating-display">
-            <span className="rating-label">Average Score</span>
-            <span className="rating-score">{avgScore.toFixed(1)}/5</span>
-          </div>
-        )}
-        
-        <div className="property-actions">
-          <a href={property.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-            View on Funda
-          </a>
+        <div className="property-actions" style={{ alignItems: 'center' }}>
+          {avgScore !== null && (
+            <div 
+              className="btn"
+              style={{ 
+                margin: 0, 
+                background: getScoreColor(avgScore),
+                color: 'white',
+                cursor: 'default'
+              }}
+            >
+              <span className="rating-label">Score: </span>
+              <span className="rating-score">{avgScore.toFixed(1)}/5</span>
+            </div>
+          )}
           
           {property.review_status === 'new' ? (
             <>
-              <button onClick={onReview} className="btn btn-success">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onReview();
+                }} 
+                className="btn btn-success"
+              >
                 Review
               </button>
-              <button onClick={onQuickReject} className="btn btn-danger">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onQuickReject();
+                }} 
+                className="btn btn-danger"
+              >
                 ✕
               </button>
             </>
           ) : (
-            <button onClick={onReview} className="btn btn-secondary">
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onReview();
+              }} 
+              className="btn btn-secondary"
+            >
               Edit
             </button>
           )}
         </div>
       </div>
-    </div>
+    </a>
   );
 }

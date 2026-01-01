@@ -46,7 +46,7 @@ function Navigation() {
 
         {/* Desktop Layout */}
         <div className="nav-desktop">
-          <span className="nav-logo">🏠 Funda Tracker</span>
+          <span className="nav-logo">Funda Tracker</span>
           <ul className="nav-links">
             {navItems.map((item) => (
               <li key={item.path}>
