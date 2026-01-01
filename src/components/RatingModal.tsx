@@ -12,7 +12,6 @@ export default function RatingModal({ property, onSave, onClose }: RatingModalPr
   const [qualityScore, setQualityScore] = useState(property.rating_quality || 0);
   const [outsideScore, setOutsideScore] = useState(property.rating_outside || 0);
   const [valueScore, setValueScore] = useState(property.rating_value || 0);
-  // FIX: Default to 'reviewed' if property is 'new'
   const [status, setStatus] = useState<ReviewStatus>(
     property.review_status === 'new' ? 'reviewed' : property.review_status
   );

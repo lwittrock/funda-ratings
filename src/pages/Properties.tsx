@@ -119,7 +119,7 @@ export default function Properties() {
             className={`filter-button ${filterStatus === status ? 'active' : ''}`}
           >
             <span className="filter-label">{statusConfig[status].label}</span>
-            <span className="filter-count">({getStatusCount(status)})</span>
+            {/* <span className="filter-count">({getStatusCount(status)})</span> */}
           </button>
         ))}
       </div>
