@@ -18,6 +18,7 @@ export default function Properties() {
   const [filterStatus, setFilterStatus] = useState<ReviewStatus>('new');
   const [showRejectModal, setShowRejectModal] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [sortBy, setSortBy] = useState<'rating' | 'date'>('rating');
 
   useEffect(() => {
     loadData();
@@ -85,13 +86,34 @@ export default function Properties() {
     setRejectReason('');
   };
 
-  {/* const getStatusCount = (status: ReviewStatus) => {
-    return Object.values(properties).filter(p => p.review_status === status).length;
-  }; */}
+  const getAverageScore = (property: Property): number => {
+    const scores = [
+      property.rating_location,
+      property.rating_quality,
+      property.rating_outside,
+      property.rating_value
+    ].filter(s => s !== null) as number[];
+    
+    if (scores.length === 0) return 0;
+    return scores.reduce((a, b) => a + b, 0) / scores.length;
+  };
 
   const filteredProperties = useMemo(() => {
-    return Object.values(properties).filter(prop => prop.review_status === filterStatus);
-  }, [properties, filterStatus]);
+    const filtered = Object.values(properties).filter(prop => prop.review_status === filterStatus);
+    
+    return filtered.sort((a, b) => {
+      if (sortBy === 'rating') {
+        return getAverageScore(b) - getAverageScore(a); // Highest rating first
+      } else {
+        // Sort by date (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+  }, [properties, filterStatus, sortBy]);
+
+  const toggleSort = () => {
+    setSortBy(prev => prev === 'rating' ? 'date' : 'rating');
+  };
 
   if (loading) {
     return (
@@ -119,19 +141,26 @@ export default function Properties() {
             className={`filter-button ${filterStatus === status ? 'active' : ''}`}
           >
             <span className="filter-label">{statusConfig[status].label}</span>
-            {/* <span className="filter-count">({getStatusCount(status)})</span> */}
           </button>
         ))}
       </div>
 
       {/* Section Header */}
       <div className="section-header">
-        <h2 className="section-title">
-          {statusConfig[filterStatus].label}
-        </h2>
-        <p className="section-subtitle">
-          {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
-        </p>
+        <div>
+          <h2 className="section-title">
+            {statusConfig[filterStatus].label}
+          </h2>
+          <p className="section-subtitle">
+            {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
+          </p>
+        </div>
+        <button 
+          onClick={toggleSort}
+          className="sort-toggle"
+        >
+          Sort: {sortBy === 'rating' ? 'Rating' : 'Date'}
+        </button>
       </div>
 
       {/* Properties Grid */}
