@@ -34,7 +34,7 @@ function Navigation() {
       <div className="nav-container">
         {/* Mobile Header */}
         <div className="nav-mobile">
-          <span className="nav-logo">🏠 Funda Tracker</span>
+          <span className="nav-logo">Funda Tracker</span>
           <button
             onClick={toggleMobileMenu}
             className="nav-hamburger"
