@@ -108,7 +108,7 @@ export default function Summary() {
     <div className="main-content">
       {/* Section Header */}
       <div className="section-header">
-        <h2 className="section-title">📊 Summary</h2>
+        <h2 className="section-title">Summary</h2>
         <p className="section-subtitle">Statistics and insights for your property search</p>
       </div>
 
@@ -140,51 +140,81 @@ export default function Summary() {
           {/* Property Count Cards */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '0.75rem',
             marginBottom: '2rem'
           }}>
-            <div className="property-card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+            <div style={{ 
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                 {stats.total}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                Total Properties
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                Total
               </div>
             </div>
 
-            <div className="property-card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: STATUS_COLORS.new }}>
+            <div style={{ 
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: '700', color: STATUS_COLORS.new }}>
                 {stats.new}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                 New
               </div>
             </div>
 
-            <div className="property-card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: STATUS_COLORS.reviewed }}>
+            <div style={{ 
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: '700', color: STATUS_COLORS.reviewed }}>
                 {stats.reviewed}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                 Reviewed
               </div>
             </div>
 
-            <div className="property-card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: STATUS_COLORS.interested }}>
+            <div style={{ 
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: '700', color: STATUS_COLORS.interested }}>
                 {stats.interested}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                 Interested
               </div>
             </div>
 
-            <div className="property-card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: '700', color: STATUS_COLORS.rejected }}>
+            <div style={{ 
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: '700', color: STATUS_COLORS.rejected }}>
                 {stats.rejected}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                 Rejected
               </div>
             </div>
@@ -192,61 +222,66 @@ export default function Summary() {
 
           {/* Average Ratings */}
           {reviewedProps.length > 0 && (
-            <div className="property-card" style={{ padding: '1.5rem' }}>
+            <div style={{ 
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '0.5rem',
+              padding: '1.25rem'
+            }}>
               <h3 style={{ 
-                fontSize: '1.125rem', 
+                fontSize: '1rem', 
                 fontWeight: '600', 
-                marginBottom: '1rem',
+                marginBottom: '0.5rem',
                 color: 'var(--text-primary)'
               }}>
                 Average Ratings
               </h3>
               <p style={{ 
-                fontSize: '0.875rem', 
+                fontSize: '0.8125rem', 
                 color: 'var(--text-secondary)', 
-                marginBottom: '1.5rem' 
+                marginBottom: '1.25rem' 
               }}>
                 Based on {reviewedProps.length} reviewed properties
               </p>
               
               <div style={{ 
                 display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                gap: '1.5rem'
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: '1.25rem'
               }}>
                 <div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.375rem' }}>
                     Location
                   </div>
-                  <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--color-primary)' }}>
-                    {avgRatings.location} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>/5</span>
+                  <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--color-primary)' }}>
+                    {avgRatings.location} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>/5</span>
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.375rem' }}>
                     Quality
                   </div>
-                  <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--color-primary)' }}>
-                    {avgRatings.quality} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>/5</span>
+                  <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--color-primary)' }}>
+                    {avgRatings.quality} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>/5</span>
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.375rem' }}>
                     Outside
                   </div>
-                  <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--color-primary)' }}>
-                    {avgRatings.outside} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>/5</span>
+                  <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--color-primary)' }}>
+                    {avgRatings.outside} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>/5</span>
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.375rem' }}>
                     Value
                   </div>
-                  <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--color-primary)' }}>
-                    {avgRatings.value} <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>/5</span>
+                  <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--color-primary)' }}>
+                    {avgRatings.value} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>/5</span>
                   </div>
                 </div>
               </div>
