@@ -30,12 +30,16 @@ jobs:
         run: |
           pip install -r scripts/requirements.txt
       
-      - name: Run Scraper
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      - name: Create .env from secrets
         run: |
-          python scripts/search_supabase.py
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}" >> .env
+      
+      - name: Run Scraper
+        working-directory: scripts
+        run: |
+          python search_supabase.py
       
       - name: Notify on failure
         if: failure()

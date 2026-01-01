@@ -94,12 +94,16 @@ export type ReviewStatus =
 
 export interface SearchConfig {
   id: number;
-  city: string;
+  city: string; // Can be comma-separated: "breda, tilburg"
   neighborhoods: string[];
   price_min: number;
   price_max: number;
   area_min: number;
   max_results: number;
+  require_garden: boolean;
+  require_parking: boolean;
+  max_distance_mode: 'walk' | 'bike' | 'transit' | null; // NEW
+  max_distance_minutes: number | null; // NEW
   active: boolean;
   created_at: string;
 }

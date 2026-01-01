@@ -2,7 +2,6 @@
 """
 Funda Search Script with Supabase Integration
 Reads search config from Supabase and saves results back
-Now includes distance calculation to train stations AND coordinates
 """
 
 import json
@@ -13,8 +12,10 @@ from pathlib import Path
 from funda import Funda
 from supabase import create_client, Client
 from dotenv import load_dotenv
-import requests
-import time
+
+# Import our modules
+from station_config import get_station_for_city
+from distance_calculator import calculate_all_distances, estimate_api_calls, GOOGLE_MAPS_API_KEY
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,7 +23,6 @@ load_dotenv()
 # Load environment variables
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
-GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     print("❌ Error: SUPABASE_URL and SUPABASE_KEY environment variables must be set")
@@ -33,16 +33,6 @@ if not GOOGLE_MAPS_API_KEY:
 
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# Station mapping per city
-STATION_MAP = {
-    'breda': 'Breda Station, Netherlands',
-    'etten-leur': 'Etten-Leur Station, Netherlands',
-    'delft': 'Delft Station, Netherlands',
-    'tilburg': 'Tilburg Station, Netherlands',
-    'rijen': 'Station Gilzen-Rijen, Netherlands',
-    'teteringen': 'Breda Station, Netherlands',
-}
 
 
 def load_search_configs():
@@ -113,139 +103,6 @@ def extract_coordinates(listing):
     return None, None
 
 
-def get_station_for_city(city):
-    """Get the train station address for a given city"""
-    if not city:
-        return None
-    
-    city_normalized = city.lower().strip()
-    return STATION_MAP.get(city_normalized)
-
-
-def calculate_distance_to_station(property_address, station_address, mode='walking'):
-    """
-    Calculate travel time to station using Google Maps Distance Matrix API
-    
-    Args:
-        property_address: Full address of the property
-        station_address: Address of the train station
-        mode: 'walking', 'bicycling', or 'transit'
-    
-    Returns:
-        int: Travel time in minutes, or 'N/A' if route not available
-    """
-    if not GOOGLE_MAPS_API_KEY:
-        return None
-    
-    try:
-        url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-        params = {
-            'origins': property_address,
-            'destinations': station_address,
-            'mode': mode,
-            'key': GOOGLE_MAPS_API_KEY,
-            'language': 'nl',
-        }
-        
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        
-        # Check if we got valid results
-        if data.get('status') != 'OK':
-            print(f"      ⚠️  API status: {data.get('status')}")
-            return 'N/A'
-        
-        rows = data.get('rows', [])
-        if not rows or not rows[0].get('elements'):
-            return 'N/A'
-        
-        element = rows[0]['elements'][0]
-        
-        # Check element status
-        if element.get('status') != 'OK':
-            # Route not available (e.g., no transit connection)
-            return 'N/A'
-        
-        # Get duration in seconds and convert to minutes
-        duration_seconds = element.get('duration', {}).get('value')
-        if duration_seconds:
-            return round(duration_seconds / 60)
-        
-        return 'N/A'
-        
-    except requests.exceptions.RequestException as e:
-        print(f"      ⚠️  Request error for {mode}: {e}")
-        return 'N/A'
-    except Exception as e:
-        print(f"      ⚠️  Error calculating {mode} distance: {e}")
-        return 'N/A'
-
-
-def calculate_all_distances(property_data):
-    """
-    Calculate walking, biking, and transit distances to nearest station
-    Only calculates if distances are not already set
-    
-    Args:
-        property_data: Dict with property information including city and address
-    
-    Returns:
-        Dict with distance fields added/updated
-    """
-    # Skip if already calculated (not None and not empty)
-    if (property_data.get('distance_station_walk') is not None or
-        property_data.get('distance_station_bike') is not None or
-        property_data.get('distance_station_transit') is not None):
-        return property_data
-    
-    # Skip if no Google Maps API key
-    if not GOOGLE_MAPS_API_KEY:
-        return property_data
-    
-    city = property_data.get('city')
-    station_address = get_station_for_city(city)
-    
-    if not station_address:
-        # City not in our station map - skip
-        return property_data
-    
-    # Build full property address
-    parts = []
-    if property_data.get('title'):
-        parts.append(property_data['title'])
-    if property_data.get('postcode'):
-        parts.append(property_data['postcode'])
-    if city:
-        parts.append(city)
-    
-    property_address = ', '.join(parts)
-    
-    if not property_address:
-        return property_data
-    
-    print(f"      🗺️  Calculating distances to {station_address}...")
-    
-    # Calculate each mode with small delay between requests
-    walk_time = calculate_distance_to_station(property_address, station_address, 'walking')
-    time.sleep(0.2)  # Small delay to avoid rate limiting
-    
-    bike_time = calculate_distance_to_station(property_address, station_address, 'bicycling')
-    time.sleep(0.2)
-    
-    transit_time = calculate_distance_to_station(property_address, station_address, 'transit')
-    
-    # Store results
-    property_data['nearest_station_name'] = station_address.split(',')[0]  # Just "Breda Station"
-    property_data['distance_station_walk'] = walk_time
-    property_data['distance_station_bike'] = bike_time
-    property_data['distance_station_transit'] = transit_time
-    
-    print(f"      ✅ Walk: {walk_time}min | Bike: {bike_time}min | Transit: {transit_time}min")
-    
-    return property_data
-
-
 def extract_property_data(listing):
     """Extract ALL data from Funda listing and map to database schema"""
     
@@ -307,7 +164,7 @@ def extract_property_data(listing):
         'object_type': listing.get('object_type'),
         'construction_type': listing.get('construction_type'),
         'house_type': listing.get('house_type'),
-        'funda_status': listing.get('status'),  # Funda's status (available/sold)
+        'funda_status': listing.get('status'),
         
         # Measurements
         'living_area': extract_int(listing.get('living_area')),
@@ -345,7 +202,7 @@ def extract_property_data(listing):
         
         # Media (as JSON)
         'photos': photo_urls,
-        'features_data': {},  # Can store additional data here if needed
+        'features_data': {},
         
         # Review fields (default for new properties)
         'review_status': 'new',
@@ -361,6 +218,100 @@ def extract_property_data(listing):
         'distance_station_bike': None,
         'distance_station_transit': None,
     }
+
+
+def parse_cities(city_input):
+    """
+    Parse city input - can be single city or comma-separated list
+    
+    Args:
+        city_input: String like "breda" or "breda, tilburg, delft"
+        
+    Returns:
+        List of city names
+    """
+    if not city_input:
+        return []
+    
+    if isinstance(city_input, list):
+        return city_input
+    
+    # Split by comma and clean up
+    cities = [c.strip().lower() for c in city_input.split(',')]
+    return [c for c in cities if c]  # Remove empty strings
+
+
+def apply_config_filters(results, config):
+    """
+    Apply search config filters to results
+    Filters for: neighborhoods, has_garden, has_parking
+    (Distance filtering happens after distance calculation)
+    
+    Args:
+        results: List of property listings
+        config: Search config dict
+        
+    Returns:
+        Filtered list of properties
+    """
+    filtered = []
+    
+    neighborhoods = config.get('neighborhoods', [])
+    require_garden = config.get('require_garden', False)
+    require_parking = config.get('require_parking', False)
+    
+    for listing in results:
+        # Neighborhood filter
+        if neighborhoods:
+            neighborhood = listing.get('neighbourhood', '')
+            normalized_neighborhoods = [normalize_name(n) for n in neighborhoods]
+            if not neighborhood or normalize_name(neighborhood) not in normalized_neighborhoods:
+                continue
+        
+        # Garden filter
+        if require_garden and not listing.get('has_garden', False):
+            continue
+        
+        # Parking filter
+        if require_parking and not listing.get('has_parking_on_site', False):
+            continue
+        
+        filtered.append(listing)
+    
+    return filtered
+
+
+def passes_distance_filter_from_config(property_data, config):
+    """
+    Check if property passes the distance filter specified in the config
+    
+    Args:
+        property_data: Property dict with distance fields
+        config: Search config with max_distance_mode and max_distance_minutes
+        
+    Returns:
+        True if property passes filter (or no filter specified)
+    """
+    mode = config.get('max_distance_mode')
+    max_minutes = config.get('max_distance_minutes')
+    
+    # No filter specified
+    if not mode or max_minutes is None:
+        return True
+    
+    # Get the distance for the specified mode
+    distance_key = f'distance_station_{mode}'
+    distance = property_data.get(distance_key)
+    
+    # If distance not calculated yet, accept it (benefit of the doubt)
+    if distance is None or distance == 'N/A':
+        return True
+    
+    # Check if it exceeds the max
+    if isinstance(distance, (int, float)) and distance > max_minutes:
+        return False
+    
+    return True
 
 
 def search_properties():
@@ -390,18 +341,26 @@ def search_properties():
     
     total_new = 0
     total_updated = 0
+    total_rejected_filter = 0
+    new_properties_count = 0  # For API cost estimation
     
     # Process each search configuration
     for idx, config in enumerate(search_configs, 1):
-        city = config.get('city')
+        city_input = config.get('city')
+        cities = parse_cities(city_input)
+        
         neighborhoods = config.get('neighborhoods', [])
         price_min = config.get('price_min')
         price_max = config.get('price_max')
         area_min = config.get('area_min')
         max_results = config.get('max_results', 50)
+        require_garden = config.get('require_garden', False)
+        require_parking = config.get('require_parking', False)
+        distance_mode = config.get('max_distance_mode')
+        distance_max = config.get('max_distance_minutes')
         
         print(f"\n{'='*80}")
-        print(f"🔍 Search Config #{idx}: {city.title()}")
+        print(f"🔍 Search Config #{idx}: {', '.join([c.title() for c in cities])}")
         print(f"{'='*80}")
         
         if neighborhoods:
@@ -410,62 +369,57 @@ def search_properties():
             print(f"   Price: €{price_min:,} - €{price_max:,}".replace(',', '.'))
         if area_min:
             print(f"   Min area: {area_min} m²")
+        if require_garden:
+            print(f"   Required: Garden")
+        if require_parking:
+            print(f"   Required: Parking")
+        if distance_mode and distance_max:
+            print(f"   Max distance: {distance_max}min by {distance_mode}")
         
-        # Search
-        print("\n🔧 Running search...")
-        try:
-            results = f.search_listing(
-                location=city,
-                price_min=price_min,
-                price_max=price_max,
-                area_min=area_min,
-            )
-        except Exception as e:
-            print(f"   ❌ Search error: {e}")
-            print("   Trying without area filter...")
+        # Search each city
+        all_results = []
+        
+        for city in cities:
+            print(f"\n🔧 Searching {city.title()}...")
             try:
                 results = f.search_listing(
                     location=city,
                     price_min=price_min,
                     price_max=price_max,
+                    area_min=area_min,
                 )
-                if area_min:
-                    results = [r for r in results if extract_int(r.get('living_area')) and extract_int(r.get('living_area')) >= area_min]
-                    print(f"   After manual area filter: {len(results)} results")
-            except Exception as e2:
-                print(f"   ❌ Alternative search also failed: {e2}")
+                print(f"   Found {len(results)} properties in {city.title()}")
+                all_results.extend(results)
+            except Exception as e:
+                print(f"   ❌ Search error for {city}: {e}")
                 continue
         
-        print(f"   Found {len(results)} properties from API")
+        print(f"\n   Total from all cities: {len(all_results)} properties")
         
-        # Filter by neighborhoods if specified
-        if neighborhoods:
-            normalized_neighborhoods = [normalize_name(n) for n in neighborhoods]
-            filtered = []
-            
-            for listing in results:
-                neighborhood = listing.get('neighbourhood', '')
-                if neighborhood and normalize_name(neighborhood) in normalized_neighborhoods:
-                    filtered.append(listing)
-            
-            results = filtered
-            print(f"   After neighborhood filter: {len(results)} properties")
+        # Apply filters
+        filtered = apply_config_filters(all_results, config)
+        
+        if len(filtered) < len(all_results):
+            rejected = len(all_results) - len(filtered)
+            print(f"   After filters: {len(filtered)} properties ({rejected} filtered out)")
+            total_rejected_filter += rejected
         
         # Limit results
-        results = results[:max_results]
+        filtered = filtered[:max_results]
         
         # Process results
         new_count = 0
         updated_count = 0
+        skipped_distance = 0
         
-        print(f"\n💾 Processing {len(results)} properties...")
+        print(f"\n💾 Processing {len(filtered)} properties...")
         
-        for prop_idx, listing in enumerate(results, 1):
+        for prop_idx, listing in enumerate(filtered, 1):
             try:
                 global_id = listing.get('global_id') or listing.get('tiny_id')
                 
                 if prop_idx == 1 or prop_idx % 10 == 0:
-                    print(f"   [{prop_idx}/{len(results)}] Processing...")
+                    print(f"   [{prop_idx}/{len(filtered)}] Processing...")
                 
                 # Get detailed listing
                 try:
@@ -480,11 +434,16 @@ def search_properties():
                 if prop_idx == 1:
                     print(f"\n   ✅ Sample property:")
                     print(f"      Title: {property_data['title']}")
+                    print(f"      City: {property_data['city']}")
+                    print(f"      Garden: {property_data['has_garden']}")
                     print(f"      URL: {property_data['url']}")
-                    if property_data['latitude'] and property_data['longitude']:
-                        print(f"      Coordinates: {property_data['latitude']}, {property_data['longitude']}")
                 
-                if funda_id in existing_properties:
+                is_new = funda_id not in existing_properties
+                
+                if is_new:
+                    new_count += 1
+                    new_properties_count += 1
+                else:
                     # Update existing - preserve user review data
                     old_data = existing_properties[funda_id]
                     property_data['review_status'] = old_data.get('review_status', 'new')
@@ -493,7 +452,7 @@ def search_properties():
                     property_data['rating_outside'] = old_data.get('rating_outside')
                     property_data['rating_value'] = old_data.get('rating_value')
                     property_data['notes'] = old_data.get('notes')
-                    property_data['id'] = old_data.get('id')  # Preserve DB id
+                    property_data['id'] = old_data.get('id')
                     
                     # Preserve distance data if already calculated
                     if old_data.get('distance_station_walk') is not None:
@@ -503,12 +462,21 @@ def search_properties():
                         property_data['distance_station_transit'] = old_data.get('distance_station_transit')
                     
                     updated_count += 1
-                else:
-                    # New property
-                    new_count += 1
                 
-                # Calculate distances to station (only if not already set)
-                property_data = calculate_all_distances(property_data)
+                # Calculate distances (only if not already set)
+                if GOOGLE_MAPS_API_KEY:
+                    property_data = calculate_all_distances(property_data)
+                else:
+                    skipped_distance += 1
+                
+                # Check if passes distance filter from config (only for new properties)
+                if is_new and not passes_distance_filter_from_config(property_data, config):
+                    mode = config.get('max_distance_mode')
+                    max_min = config.get('max_distance_minutes')
+                    actual = property_data.get(f'distance_station_{mode}')
+                    print(f"      ⏭️  Skipped: {actual}min by {mode} exceeds max {max_min}min")
+                    total_rejected_filter += 1
+                    continue
                 
                 # Upsert to Supabase
                 upsert_property(property_data)
@@ -523,6 +491,8 @@ def search_properties():
         print(f"\n   ✅ Config #{idx} complete:")
         print(f"      🆕 New: {new_count}")
         print(f"      🔄 Updated: {updated_count}")
+        if skipped_distance > 0:
+            print(f"      ⏭️  Skipped distance calc: {skipped_distance} (no API key)")
     
     # Summary
     print("\n" + "="*80)
@@ -530,7 +500,20 @@ def search_properties():
     print("="*80)
     print(f"   🆕 Total new properties: {total_new}")
     print(f"   🔄 Total updated properties: {total_updated}")
+    print(f"   🚫 Total filtered out: {total_rejected_filter}")
     print(f"   📊 Total in database: {len(existing_properties) + total_new}")
+    
+    # API cost estimation
+    if GOOGLE_MAPS_API_KEY and new_properties_count > 0:
+        print("\n📊 Google Maps API Usage Estimate:")
+        estimates = estimate_api_calls(new_properties_count)
+        print(f"   Calls this run: ~{estimates['calls_per_run']}")
+        print(f"   Est. monthly calls: ~{estimates['calls_per_month']} (if run daily)")
+        if estimates['within_free_tier']:
+            print(f"   ✅ Within free tier (40,000/month)")
+        else:
+            print(f"   ⚠️  Exceeds free tier - Est. cost: ${estimates['estimated_monthly_cost']:.2f}/month")
+    
     print(f"\n💾 Data saved to Supabase!")
     print(f"🌐 Your app will now load from the database\n")
 
