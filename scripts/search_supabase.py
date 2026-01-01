@@ -381,20 +381,34 @@ def search_properties():
         
         for city in cities:
             print(f"\n🔧 Searching {city.title()}...")
-            try:
-                results = f.search_listing(
-                    location=city,
-                    price_min=price_min,
-                    price_max=price_max,
-                    area_min=area_min,
-                )
-                print(f"   Found {len(results)} properties in {city.title()}")
-                all_results.extend(results)
-            except Exception as e:
-                print(f"   ❌ Search error for {city}: {e}")
-                continue
-        
-        print(f"\n   Total from all cities: {len(all_results)} properties")
+
+            # Loop through the first 5 pages to get 75 properties (15 per page)
+            for page_num in range(0, 5): 
+                try:
+                    print(f"   Fetching page {page_num + 1}...")
+                    page_results = f.search_listing(
+                        location=city,
+                        price_min=price_min,
+                        price_max=price_max,
+                        area_min=area_min,
+                        offering_type='buy',
+                        page=page_num
+                    )
+                    
+                    if not page_results:
+                        break
+                        
+                    all_results.extend(page_results)
+                    
+                    # If we got fewer than 15, it means there are no more pages
+                    if len(page_results) < 15:
+                        break
+                        
+                except Exception as e:
+                    print(f"   ⚠️ Error on page {page_num}: {e}")
+                    break
+
+            print(f"   Total found in {city}: {len(all_results)}")
         
         # Apply filters
         filtered = apply_config_filters(all_results, config)
