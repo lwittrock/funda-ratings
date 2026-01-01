@@ -85,9 +85,9 @@ export default function Properties() {
     setRejectReason('');
   };
 
-  const getStatusCount = (status: ReviewStatus) => {
+  {/* const getStatusCount = (status: ReviewStatus) => {
     return Object.values(properties).filter(p => p.review_status === status).length;
-  };
+  }; */}
 
   const filteredProperties = useMemo(() => {
     return Object.values(properties).filter(prop => prop.review_status === filterStatus);
