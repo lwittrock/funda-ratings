@@ -13,12 +13,12 @@ from funda import Funda
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Import our modules
 from station_config import get_station_for_city
 from distance_calculator import calculate_all_distances, estimate_api_calls, GOOGLE_MAPS_API_KEY
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Load environment variables
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
