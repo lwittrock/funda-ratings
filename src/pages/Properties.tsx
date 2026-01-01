@@ -147,20 +147,22 @@ export default function Properties() {
 
       {/* Section Header */}
       <div className="section-header">
-        <div>
+        <div style={{ flex: 1 }}>
           <h2 className="section-title">
             {statusConfig[filterStatus].label}
           </h2>
-          <p className="section-subtitle">
-            {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p className="section-subtitle">
+              {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
+            </p>
+            <button 
+              onClick={toggleSort}
+              className="sort-toggle"
+            >
+              Sort: {sortBy === 'rating' ? 'Rating' : 'Date'}
+            </button>
+          </div>
         </div>
-        <button 
-          onClick={toggleSort}
-          className="sort-toggle"
-        >
-          Sort: {sortBy === 'rating' ? 'Rating' : 'Date'}
-        </button>
       </div>
 
       {/* Properties Grid */}
