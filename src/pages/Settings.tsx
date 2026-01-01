@@ -268,7 +268,7 @@ export default function Settings() {
                 value={formData.max_distance_mode || ''}
                 onChange={(e) => setFormData({ 
                   ...formData, 
-                  max_distance_mode: e.target.value || null 
+                  max_distance_mode: (e.target.value as "walk" | "bike" | "transit") || null
                 })}
                 className="form-input"
               >
