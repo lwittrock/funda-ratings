@@ -63,7 +63,9 @@ def calculate_distance_to_station(
         # Get duration in seconds and convert to minutes
         duration_seconds = element.get('duration', {}).get('value')
         if duration_seconds:
-            return round(duration_seconds / 60)
+            result = round(duration_seconds / 60)
+            print(f"      🔍 API: {mode} took {duration_seconds}s = {duration_seconds/60:.1f}min → rounded to {result}min")
+            return result
         
         return 'N/A'
         
@@ -77,31 +79,32 @@ def calculate_distance_to_station(
 
 def calculate_all_distances(property_data: dict) -> dict:
     """
-    Calculate walking, biking, and transit distances to nearest station
-    Only calculates modes that are relevant for the city
-    Only calculates if distances are not already set
-    
-    Args:
-        property_data: Dict with property information including city and address
-    
-    Returns:
-        Dict with distance fields added/updated
+    DEBUGGED VERSION - Calculate walking, biking, and transit distances to nearest station
     """
+    print(f"      🔍 DEBUG START calculate_all_distances")
+    print(f"      🔍 Input: city={property_data.get('city')}")
+    
     # Skip if no Google Maps API key
     if not GOOGLE_MAPS_API_KEY:
+        print(f"      🔍 DEBUG: No API key, returning")
         return property_data
     
     # Check if already calculated
-    if (property_data.get('distance_station_walk') is not None or
-        property_data.get('distance_station_bike') is not None or
-        property_data.get('distance_station_transit') is not None):
+    walk_dist = property_data.get('distance_station_walk')
+    bike_dist = property_data.get('distance_station_bike')
+    transit_dist = property_data.get('distance_station_transit')
+    
+    print(f"      🔍 DEBUG: Existing distances - walk={walk_dist}, bike={bike_dist}, transit={transit_dist}")
+    
+    if (walk_dist is not None or bike_dist is not None or transit_dist is not None):
+        print(f"      🔍 DEBUG: Already calculated, returning")
         return property_data
     
     city = property_data.get('city')
     station_config = get_station_for_city(city)
     
     if not station_config:
-        # City not in our station map - skip
+        print(f"      🔍 DEBUG: No station config for {city}, returning")
         return property_data
     
     station_address = station_config['station']
@@ -117,6 +120,8 @@ def calculate_all_distances(property_data: dict) -> dict:
     
     property_address = ', '.join(parts)
     
+    print(f"      🔍 DEBUG: Property address built: '{property_address}'")
+    
     if not property_address:
         return property_data
     
@@ -131,25 +136,51 @@ def calculate_all_distances(property_data: dict) -> dict:
     # Calculate only the modes we care about for this city
     modes_to_calculate = station_config.get('modes', [])
     
+    print(f"      🔍 DEBUG: Modes to calculate: {modes_to_calculate}")
+    
     for mode in modes_to_calculate:
+        print(f"      🔍 DEBUG: Starting mode '{mode}'")
+        
         # Map our mode names to Google Maps API mode names
-        api_mode = 'bicycling' if mode == 'bike' else mode
+        mode_mapping = {
+            'walk': 'walking',
+            'bike': 'bicycling',
+            'transit': 'transit'
+        }
+        api_mode = mode_mapping.get(mode, mode)
+        
+        print(f"      🔍 DEBUG: Calling calculate_distance_to_station('{property_address}', '{station_address}', '{api_mode}')")
         
         time_value = calculate_distance_to_station(property_address, station_address, api_mode)
-        property_data[f'distance_station_{mode}'] = time_value
         
-        time.sleep(0.2)  # Small delay to avoid rate limiting
+        print(f"      🔍 DEBUG: Got time_value = {time_value} (type: {type(time_value)})")
+        
+        field_name = f'distance_station_{mode}'
+        property_data[field_name] = time_value
+        
+        print(f"      🔍 DEBUG: Set property_data['{field_name}'] = {time_value}")
+        print(f"      🔍 DEBUG: Verify property_data['{field_name}'] = {property_data[field_name]}")
+        
+        time.sleep(0.2)
     
     # Log results
     results = []
     if 'walk' in modes_to_calculate:
-        results.append(f"Walk: {property_data['distance_station_walk']}min")
+        val = property_data['distance_station_walk']
+        print(f"      🔍 DEBUG: Reading walk distance: {val}")
+        results.append(f"Walk: {val}min")
     if 'bike' in modes_to_calculate:
-        results.append(f"Bike: {property_data['distance_station_bike']}min")
+        val = property_data['distance_station_bike']
+        print(f"      🔍 DEBUG: Reading bike distance: {val}")
+        results.append(f"Bike: {val}min")
     if 'transit' in modes_to_calculate:
-        results.append(f"Transit: {property_data['distance_station_transit']}min")
+        val = property_data['distance_station_transit']
+        print(f"      🔍 DEBUG: Reading transit distance: {val}")
+        results.append(f"Transit: {val}min")
     
     print(f"      ✅ {' | '.join(results)}")
+    
+    print(f"      🔍 DEBUG END - returning property_data")
     
     return property_data
 

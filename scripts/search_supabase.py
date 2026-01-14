@@ -81,8 +81,10 @@ def extract_int(value):
         return value
     if isinstance(value, str):
         # Handle common "not available" strings
-        if value.lower() in ['na', 'n.v.t.', 'n.v.t', 'nvt', '']:
+        # 'na' = not available, 'n.v.t.' = niet van toepassing, 'vo' = verkocht onder voorbehoud
+        if value.lower() in ['na', 'n.v.t.', 'n.v.t', 'nvt', 'vo', 'v.o.', 'v.o', '']:
             return None
+        # Try to extract first number from string
         match = re.search(r'\d+', value)
         return int(match.group()) if match else None
     return None
@@ -421,8 +423,14 @@ def search_properties():
                     detailed_listing = f.get_listing(global_id)
                     property_data = extract_property_data(detailed_listing)
                     time.sleep(0.3)  # Rate limiting
+                except ValueError as e:
+                    # Funda library failed to parse the listing (e.g., 'na', 'vo' in numeric fields)
+                    if prop_idx <= 3:
+                        print(f"      ⚠️  Parse error, using basic listing: {e}")
+                    property_data = extract_property_data(listing)
                 except Exception as e:
-                    print(f"      ⚠️  Could not get detailed listing: {e}")
+                    if prop_idx <= 3:
+                        print(f"      ⚠️  API error, using basic listing: {e}")
                     property_data = extract_property_data(listing)
                 
                 # Show first property
