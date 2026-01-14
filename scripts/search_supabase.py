@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
 Funda Search Script with Supabase Integration
-Reads search config from Supabase and saves results back
+Optimized two-stage filtering:
+1. Filter on basic search results (neighborhoods)
+2. Fetch detailed listings only for those that pass
+3. Filter on detailed data (garden, distance)
 """
 
 import json
 import os
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from funda import Funda
@@ -49,7 +53,6 @@ def load_existing_properties():
     """Load existing properties from Supabase"""
     try:
         response = supabase.table('properties').select('*').execute()
-        # Convert list to dict keyed by funda_id
         return {prop['funda_id']: prop for prop in response.data}
     except Exception as e:
         print(f"⚠️  Warning: Could not load existing properties: {e}")
@@ -59,7 +62,6 @@ def load_existing_properties():
 def upsert_property(property_data):
     """Insert or update a property in Supabase"""
     try:
-        # Use funda_id for upsert conflict resolution
         supabase.table('properties').upsert(property_data, on_conflict='funda_id').execute()
     except Exception as e:
         print(f"   ❌ Failed to upsert property {property_data.get('funda_id')}: {e}")
@@ -78,21 +80,36 @@ def extract_int(value):
     if isinstance(value, int):
         return value
     if isinstance(value, str):
+        # Handle common "not available" strings
+        if value.lower() in ['na', 'n.v.t.', 'n.v.t', 'nvt', '']:
+            return None
         match = re.search(r'\d+', value)
         return int(match.group()) if match else None
     return None
 
 
+def get_listing_attr(listing, attr_name, default=None):
+    """
+    Safely get attribute from Listing object
+    Listing objects store data in a 'data' dict attribute
+    """
+    # First try to get from the data dict
+    if hasattr(listing, 'data') and isinstance(listing.data, dict):
+        if attr_name in listing.data:
+            return listing.data[attr_name]
+    
+    # Then try as direct attribute
+    return getattr(listing, attr_name, default)
+
+
 def extract_coordinates(listing):
     """Extract latitude and longitude from listing"""
-    # Try to get coordinates tuple
-    coords = listing.get('coordinates')
+    coords = get_listing_attr(listing, 'coordinates')
     if coords and isinstance(coords, (list, tuple)) and len(coords) == 2:
         return float(coords[0]), float(coords[1])
     
-    # Try individual fields
-    lat = listing.get('latitude')
-    lng = listing.get('longitude')
+    lat = get_listing_attr(listing, 'latitude')
+    lng = get_listing_attr(listing, 'longitude')
     
     if lat is not None and lng is not None:
         try:
@@ -107,97 +124,98 @@ def extract_property_data(listing):
     """Extract ALL data from Funda listing and map to database schema"""
     
     # Get photo URLs
-    photo_urls = listing.get('photo_urls', [])
+    photo_urls = get_listing_attr(listing, 'photo_urls', [])
     if not photo_urls:
-        photos = listing.get('photos', [])
+        photos = get_listing_attr(listing, 'photos', [])
         if photos and isinstance(photos, list):
+            # Photos might be IDs - just store them
             photo_urls = photos
     
     thumbnail_url = photo_urls[0] if photo_urls else None
     
     # Get URL
-    funda_url = listing.get('url') or listing.get('share_url')
+    funda_url = get_listing_attr(listing, 'url') or get_listing_attr(listing, 'share_url')
     
     # Construct URL if not found
     if not funda_url:
-        object_type_slug = listing.get('object_type', 'huis').lower()
+        object_type_slug = get_listing_attr(listing, 'object_type', 'huis').lower()
         if object_type_slug == 'house':
             object_type_slug = 'huis'
         elif object_type_slug == 'apartment':
             object_type_slug = 'appartement'
         
-        city = listing.get('city', '').lower()
-        title_slug = listing.get('title', '').lower().replace(' ', '-')
-        property_id = listing.get('global_id') or listing.get('tiny_id')
+        city = get_listing_attr(listing, 'city', '').lower()
+        title_slug = get_listing_attr(listing, 'title', '').lower().replace(' ', '-')
+        property_id = get_listing_attr(listing, 'global_id') or get_listing_attr(listing, 'tiny_id')
         
         funda_url = f"https://www.funda.nl/detail/koop/{city}/{object_type_slug}-{title_slug}/{property_id}/"
     
     # Extract coordinates
     latitude, longitude = extract_coordinates(listing)
     
-    # Extract all fields matching the database schema
+    # Extract all fields
     return {
         # Identifiers
-        'funda_id': str(listing.get('global_id') or listing.get('tiny_id')),
-        'tiny_id': str(listing.get('tiny_id')) if listing.get('tiny_id') else None,
+        'funda_id': str(get_listing_attr(listing, 'global_id') or get_listing_attr(listing, 'tiny_id')),
+        'tiny_id': str(get_listing_attr(listing, 'tiny_id')) if get_listing_attr(listing, 'tiny_id') else None,
         
         # Address
-        'title': listing.get('title'),
-        'city': listing.get('city'),
-        'postcode': listing.get('postcode'),
-        'province': listing.get('province'),
-        'neighbourhood': listing.get('neighbourhood'),
-        'municipality': listing.get('municipality'),
-        'house_number': listing.get('house_number'),
-        'house_number_ext': listing.get('house_number_ext'),
+        'title': get_listing_attr(listing, 'title'),
+        'city': get_listing_attr(listing, 'city'),
+        'postcode': get_listing_attr(listing, 'postcode'),
+        'province': get_listing_attr(listing, 'province'),
+        'neighbourhood': get_listing_attr(listing, 'neighbourhood'),
+        'municipality': get_listing_attr(listing, 'municipality'),
+        'house_number': get_listing_attr(listing, 'house_number'),
+        'house_number_ext': get_listing_attr(listing, 'house_number_ext'),
         
         # Coordinates
         'latitude': latitude,
         'longitude': longitude,
         
         # Price
-        'price': extract_int(listing.get('price')),
-        'price_formatted': listing.get('price_formatted'),
+        'price': extract_int(get_listing_attr(listing, 'price')),
+        'price_formatted': get_listing_attr(listing, 'price_formatted'),
         
         # Property details
-        'offering_type': listing.get('offering_type'),
-        'object_type': listing.get('object_type'),
-        'construction_type': listing.get('construction_type'),
-        'house_type': listing.get('house_type'),
-        'funda_status': listing.get('status'),
+        'offering_type': get_listing_attr(listing, 'offering_type'),
+        'object_type': get_listing_attr(listing, 'object_type'),
+        'construction_type': get_listing_attr(listing, 'construction_type'),
+        'house_type': get_listing_attr(listing, 'house_type'),
+        'funda_status': get_listing_attr(listing, 'status'),
         
         # Measurements
-        'living_area': extract_int(listing.get('living_area')),
-        'plot_area': extract_int(listing.get('plot_area')),
-        'bedrooms': extract_int(listing.get('bedrooms')),
-        'rooms': extract_int(listing.get('rooms')),
-        'construction_year': extract_int(listing.get('construction_year')),
+        'living_area': extract_int(get_listing_attr(listing, 'living_area')),
+        'plot_area': extract_int(get_listing_attr(listing, 'plot_area')),
+        'bedrooms': extract_int(get_listing_attr(listing, 'bedrooms')),
+        'rooms': extract_int(get_listing_attr(listing, 'rooms')),
+        'construction_year': extract_int(get_listing_attr(listing, 'construction_year')),
         
         # Energy & Features
-        'energy_label': listing.get('energy_label'),
-        'has_garden': listing.get('has_garden', False),
-        'has_balcony': listing.get('has_balcony', False),
-        'has_solar_panels': listing.get('has_solar_panels', False),
-        'has_heat_pump': listing.get('has_heat_pump', False),
-        'has_roof_terrace': listing.get('has_roof_terrace', False),
-        'has_parking_on_site': listing.get('has_parking_on_site', False),
-        'has_parking_enclosed': listing.get('has_parking_enclosed', False),
-        'is_energy_efficient': listing.get('is_energy_efficient', False),
-        'is_monument': listing.get('is_monument', False),
-        'is_fixer_upper': listing.get('is_fixer_upper', False),
+        'energy_label': get_listing_attr(listing, 'energy_label'),
+        'has_garden': get_listing_attr(listing, 'has_garden', False),
+        'has_balcony': get_listing_attr(listing, 'has_balcony', False),
+        'has_solar_panels': get_listing_attr(listing, 'has_solar_panels', False),
+        'has_heat_pump': get_listing_attr(listing, 'has_heat_pump', False),
+        'has_roof_terrace': get_listing_attr(listing, 'has_roof_terrace', False),
+        'has_parking_on_site': get_listing_attr(listing, 'has_parking_on_site', False),
+        'has_parking_enclosed': get_listing_attr(listing, 'has_parking_enclosed', False),
+        'is_energy_efficient': get_listing_attr(listing, 'is_energy_efficient', False),
+        'is_monument': get_listing_attr(listing, 'is_monument', False),
+        'is_fixer_upper': get_listing_attr(listing, 'is_fixer_upper', False),
         
         # Listing details
-        'description': listing.get('description'),
-        'highlight': listing.get('highlight'),
-        'publication_date': listing.get('publication_date'),
-        'open_house': listing.get('open_house', False),
-        'is_auction': listing.get('is_auction', False),
+        'description': get_listing_attr(listing, 'description'),
+        'highlight': get_listing_attr(listing, 'highlight'),
+        'publication_date': get_listing_attr(listing, 'publication_date'),
+        'open_house': get_listing_attr(listing, 'open_house', False),
+        'is_auction': get_listing_attr(listing, 'is_auction', False),
         
         # URLs
         'url': funda_url,
-        'share_url': listing.get('share_url'),
-        'google_maps_url': listing.get('google_maps_url'),
-        'brochure_url': listing.get('brochure_url'),
+        'share_url': get_listing_attr(listing, 'share_url'),
+        'google_maps_url': get_listing_attr(listing, 'google_maps_url'),
+        'brochure_url': get_listing_attr(listing, 'brochure_url'),
         'thumbnail_url': thumbnail_url,
         
         # Media (as JSON)
@@ -221,93 +239,45 @@ def extract_property_data(listing):
 
 
 def parse_cities(city_input):
-    """
-    Parse city input - can be single city or comma-separated list
-    
-    Args:
-        city_input: String like "breda" or "breda, tilburg, delft"
-        
-    Returns:
-        List of city names
-    """
+    """Parse city input - can be single city or comma-separated list"""
     if not city_input:
         return []
     
     if isinstance(city_input, list):
         return city_input
     
-    # Split by comma and clean up
     cities = [c.strip().lower() for c in city_input.split(',')]
-    return [c for c in cities if c]  # Remove empty strings
+    return [c for c in cities if c]
 
 
-def apply_config_filters(results, config):
-    """
-    Apply search config filters to results
-    Filters for: neighborhoods, has_garden, has_parking
-    (Distance filtering happens after distance calculation)
+def filter_by_neighborhood(listing, neighborhoods):
+    """Check if listing passes neighborhood filter"""
+    if not neighborhoods:
+        return True
     
-    Args:
-        results: List of property listings
-        config: Search config dict
-        
-    Returns:
-        Filtered list of properties
-    """
-    filtered = []
+    neighborhood = get_listing_attr(listing, 'neighbourhood', '')
+    normalized_neighborhoods = [normalize_name(n) for n in neighborhoods]
     
-    neighborhoods = config.get('neighborhoods', [])
-    require_garden = config.get('require_garden', False)
-    require_parking = config.get('require_parking', False)
+    if not neighborhood or normalize_name(neighborhood) not in normalized_neighborhoods:
+        return False
     
-    for listing in results:
-        # Neighborhood filter
-        if neighborhoods:
-            neighborhood = listing.get('neighbourhood', '')
-            normalized_neighborhoods = [normalize_name(n) for n in neighborhoods]
-            if not neighborhood or normalize_name(neighborhood) not in normalized_neighborhoods:
-                continue
-        
-        # Garden filter
-        if require_garden and not listing.get('has_garden', False):
-            continue
-        
-        # Parking filter
-        if require_parking and not listing.get('has_parking_on_site', False):
-            continue
-        
-        filtered.append(listing)
-    
-    return filtered
+    return True
 
 
 def passes_distance_filter_from_config(property_data, config):
-    """
-    Check if property passes the distance filter specified in the config
-    
-    Args:
-        property_data: Property dict with distance fields
-        config: Search config with max_distance_mode and max_distance_minutes
-        
-    Returns:
-        True if property passes filter (or no filter specified)
-    """
+    """Check if property passes distance filter"""
     mode = config.get('max_distance_mode')
     max_minutes = config.get('max_distance_minutes')
     
-    # No filter specified
     if not mode or max_minutes is None:
         return True
     
-    # Get the distance for the specified mode
     distance_key = f'distance_station_{mode}'
     distance = property_data.get(distance_key)
     
-    # If distance not calculated yet, accept it (benefit of the doubt)
     if distance is None or distance == 'N/A':
         return True
     
-    # Check if it exceeds the max
     if isinstance(distance, (int, float)) and distance > max_minutes:
         return False
     
@@ -315,36 +285,32 @@ def passes_distance_filter_from_config(property_data, config):
 
 
 def search_properties():
-    """Main search function"""
+    """Main search function with two-stage filtering"""
     print("="*80)
-    print("🏠 FUNDA PROPERTY SEARCH (Supabase)")
+    print("🏠 FUNDA PROPERTY SEARCH (Optimized)")
     print("="*80)
     
-    # Load search configurations from Supabase
     print("\n📋 Loading search configurations from Supabase...")
     search_configs = load_search_configs()
     
     if not search_configs:
-        print("❌ No active search configurations found in Supabase!")
-        print("   Add a search config in your Supabase dashboard.")
+        print("❌ No active search configurations found!")
         return
     
-    print(f"   Found {len(search_configs)} active search configuration(s)")
+    print(f"   Found {len(search_configs)} active configuration(s)")
     
-    # Load existing properties
     print("\n📊 Loading existing properties from Supabase...")
     existing_properties = load_existing_properties()
     print(f"   Currently tracking {len(existing_properties)} properties")
     
-    # Initialize Funda API
     f = Funda()
     
     total_new = 0
     total_updated = 0
-    total_rejected_filter = 0
-    new_properties_count = 0  # For API cost estimation
+    total_filtered_neighborhood = 0
+    total_filtered_garden = 0
+    total_filtered_distance = 0
     
-    # Process each search configuration
     for idx, config in enumerate(search_configs, 1):
         city_input = config.get('city')
         cities = parse_cities(city_input)
@@ -355,7 +321,6 @@ def search_properties():
         area_min = config.get('area_min')
         max_results = config.get('max_results', 50)
         require_garden = config.get('require_garden', False)
-        require_parking = config.get('require_parking', False)
         distance_mode = config.get('max_distance_mode')
         distance_max = config.get('max_distance_minutes')
         
@@ -371,21 +336,18 @@ def search_properties():
             print(f"   Min area: {area_min} m²")
         if require_garden:
             print(f"   Required: Garden")
-        if require_parking:
-            print(f"   Required: Parking")
         if distance_mode and distance_max:
             print(f"   Max distance: {distance_max}min by {distance_mode}")
         
-        # Search each city
+        # STAGE 1: Basic search from Funda API
+        print(f"\n📥 STAGE 1: Fetching basic listings from Funda...")
         all_results = []
         
         for city in cities:
-            print(f"\n🔧 Searching {city.title()}...")
-
-            # Loop through the first 5 pages to get 75 properties (15 per page)
+            print(f"   Searching {city.title()}...", end='')
+            
             for page_num in range(0, 5): 
                 try:
-                    print(f"   Fetching page {page_num + 1}...")
                     page_results = f.search_listing(
                         location=city,
                         price_min=price_min,
@@ -400,63 +362,89 @@ def search_properties():
                         
                     all_results.extend(page_results)
                     
-                    # If we got fewer than 15, it means there are no more pages
                     if len(page_results) < 15:
                         break
                         
                 except Exception as e:
-                    print(f"   ⚠️ Error on page {page_num}: {e}")
+                    print(f" ⚠️  Error: {e}")
                     break
-
-            print(f"   Total found in {city}: {len(all_results)}")
+            
+            city_count = len([r for r in all_results if get_listing_attr(r, 'city', '').lower() == city])
+            print(f" {city_count} found")
         
-        # Apply filters
-        filtered = apply_config_filters(all_results, config)
+        print(f"   Total from API: {len(all_results)} properties")
         
-        if len(filtered) < len(all_results):
-            rejected = len(all_results) - len(filtered)
-            print(f"   After filters: {len(filtered)} properties ({rejected} filtered out)")
-            total_rejected_filter += rejected
+        # STAGE 2: Apply cheap filters (neighborhood)
+        print(f"\n🔍 STAGE 2: Applying neighborhood filter...")
+        passed_basic_filter = []
+        filtered_neighborhood = 0
         
-        # Limit results
-        filtered = filtered[:max_results]
+        for listing in all_results:
+            if filter_by_neighborhood(listing, neighborhoods):
+                passed_basic_filter.append(listing)
+            else:
+                filtered_neighborhood += 1
         
-        # Process results
+        total_filtered_neighborhood += filtered_neighborhood
+        
+        if filtered_neighborhood > 0:
+            print(f"   ✅ Passed: {len(passed_basic_filter)}")
+            print(f"   ❌ Filtered out: {filtered_neighborhood}")
+        else:
+            print(f"   ✅ All passed: {len(passed_basic_filter)}")
+        
+        # Limit before detailed fetching
+        passed_basic_filter = passed_basic_filter[:max_results]
+        
+        if len(passed_basic_filter) == 0:
+            print(f"   ⏭️  No properties to process, moving to next config...")
+            continue
+        
+        # STAGE 3: Fetch detailed listings
+        print(f"\n📥 STAGE 3: Fetching detailed listings ({len(passed_basic_filter)} properties)...")
+        print(f"   ⏱️  This may take ~{len(passed_basic_filter) * 0.3:.0f} seconds...")
+        
         new_count = 0
         updated_count = 0
-        skipped_distance = 0
+        filtered_garden = 0
+        filtered_distance = 0
         
-        print(f"\n💾 Processing {len(filtered)} properties...")
-        
-        for prop_idx, listing in enumerate(filtered, 1):
+        for prop_idx, listing in enumerate(passed_basic_filter, 1):
             try:
-                global_id = listing.get('global_id') or listing.get('tiny_id')
+                global_id = get_listing_attr(listing, 'global_id') or get_listing_attr(listing, 'tiny_id')
                 
-                if prop_idx == 1 or prop_idx % 10 == 0:
-                    print(f"   [{prop_idx}/{len(filtered)}] Processing...")
+                if prop_idx % 5 == 0 or prop_idx == 1:
+                    print(f"   [{prop_idx}/{len(passed_basic_filter)}] Processing...")
                 
-                # Get detailed listing
+                # Fetch detailed listing
                 try:
                     detailed_listing = f.get_listing(global_id)
                     property_data = extract_property_data(detailed_listing)
+                    time.sleep(0.3)  # Rate limiting
                 except Exception as e:
+                    print(f"      ⚠️  Could not get detailed listing: {e}")
                     property_data = extract_property_data(listing)
                 
-                funda_id = property_data['funda_id']
-                
-                # Debug first property
+                # Show first property
                 if prop_idx == 1:
-                    print(f"\n   ✅ Sample property:")
+                    print(f"\n   ✅ First property (detailed):")
                     print(f"      Title: {property_data['title']}")
                     print(f"      City: {property_data['city']}")
+                    print(f"      Neighborhood: {property_data['neighbourhood']}")
                     print(f"      Garden: {property_data['has_garden']}")
-                    print(f"      URL: {property_data['url']}")
                 
+                # STAGE 4: Apply garden filter
+                if require_garden and not property_data.get('has_garden', False):
+                    filtered_garden += 1
+                    if filtered_garden <= 3:
+                        print(f"      ⏭️  No garden: {property_data['title']}")
+                    continue
+                
+                funda_id = property_data['funda_id']
                 is_new = funda_id not in existing_properties
                 
                 if is_new:
                     new_count += 1
-                    new_properties_count += 1
                 else:
                     # Update existing - preserve user review data
                     old_data = existing_properties[funda_id]
@@ -477,56 +465,52 @@ def search_properties():
                     
                     updated_count += 1
                 
-                # Calculate distances (only if not already set)
+                # STAGE 5: Calculate distances
                 if GOOGLE_MAPS_API_KEY:
                     property_data = calculate_all_distances(property_data)
-                else:
-                    skipped_distance += 1
                 
-                # Check if passes distance filter from config (only for new properties)
+                # STAGE 6: Apply distance filter (only for new properties)
                 if is_new and not passes_distance_filter_from_config(property_data, config):
                     mode = config.get('max_distance_mode')
                     max_min = config.get('max_distance_minutes')
                     actual = property_data.get(f'distance_station_{mode}')
-                    print(f"      ⏭️  Skipped: {actual}min by {mode} exceeds max {max_min}min")
-                    total_rejected_filter += 1
+                    filtered_distance += 1
+                    if filtered_distance <= 3:
+                        print(f"      ⏭️  Too far: {actual}min by {mode} (max {max_min}min)")
                     continue
                 
-                # Upsert to Supabase
+                # Save to database
                 upsert_property(property_data)
                 
             except Exception as e:
-                print(f"      ❌ Error processing property: {e}")
+                print(f"      ❌ Error: {e}")
                 continue
         
         total_new += new_count
         total_updated += updated_count
+        total_filtered_garden += filtered_garden
+        total_filtered_distance += filtered_distance
         
         print(f"\n   ✅ Config #{idx} complete:")
         print(f"      🆕 New: {new_count}")
         print(f"      🔄 Updated: {updated_count}")
-        if skipped_distance > 0:
-            print(f"      ⏭️  Skipped distance calc: {skipped_distance} (no API key)")
+        if filtered_garden > 0:
+            print(f"      🚫 Filtered (no garden): {filtered_garden}")
+        if filtered_distance > 0:
+            print(f"      🚫 Filtered (too far): {filtered_distance}")
     
     # Summary
     print("\n" + "="*80)
     print("✅ ALL SEARCHES COMPLETE")
     print("="*80)
-    print(f"   🆕 Total new properties: {total_new}")
-    print(f"   🔄 Total updated properties: {total_updated}")
-    print(f"   🚫 Total filtered out: {total_rejected_filter}")
+    print(f"\n📊 Filter Results:")
+    print(f"   Neighborhood: {total_filtered_neighborhood} filtered")
+    print(f"   Garden: {total_filtered_garden} filtered")
+    print(f"   Distance: {total_filtered_distance} filtered")
+    print(f"\n💾 Database Updates:")
+    print(f"   🆕 New properties: {total_new}")
+    print(f"   🔄 Updated properties: {total_updated}")
     print(f"   📊 Total in database: {len(existing_properties) + total_new}")
-    
-    # API cost estimation
-    if GOOGLE_MAPS_API_KEY and new_properties_count > 0:
-        print("\n📊 Google Maps API Usage Estimate:")
-        estimates = estimate_api_calls(new_properties_count)
-        print(f"   Calls this run: ~{estimates['calls_per_run']}")
-        print(f"   Est. monthly calls: ~{estimates['calls_per_month']} (if run daily)")
-        if estimates['within_free_tier']:
-            print(f"   ✅ Within free tier (40,000/month)")
-        else:
-            print(f"   ⚠️  Exceeds free tier - Est. cost: ${estimates['estimated_monthly_cost']:.2f}/month")
     
     print(f"\n💾 Data saved to Supabase!")
     print(f"🌐 Your app will now load from the database\n")
